@@ -50,11 +50,33 @@ class Teacher(models.Model):
         return self.name
 
 
-class Rating(models.Model):
-    """Eine Bewertung eines Schülers für eine Lehrkraft (5 Fragen, Skala 1–10)."""
+class RatingQuestion(models.Model):
+    """Eine Bewertungsfrage (dynamisch im Admin verwaltbar).
 
-    SCALE_MIN = 1
-    SCALE_MAX = 10
+    Inaktive Fragen werden nicht mehr für neue Bewertungen angeboten,
+    bestehende Antworten bleiben für die Score-Historie erhalten.
+    ``key`` ist ein optionaler stabiler Bezeichner (z.B. 'fairness'), um
+    bestimmte Fragen für Kategorie-Scores/Achievements zuordnen zu können.
+    """
+
+    text = models.CharField(max_length=200)
+    key = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.text
+
+
+class Rating(models.Model):
+    """Eine Bewertung eines Schülers für eine Lehrkraft.
+
+    Besteht aus mehreren Antworten (RatingAnswer), eine pro aktiver Frage
+    zum Zeitpunkt der Bewertung.
+    """
 
     pupil = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings'
@@ -62,12 +84,6 @@ class Rating(models.Model):
     teacher = models.ForeignKey(
         Teacher, on_delete=models.CASCADE, related_name='ratings'
     )
-    # 5 Kategorien
-    q_interest = models.PositiveSmallIntegerField()       # Wie interessant?
-    q_productivity = models.PositiveSmallIntegerField()   # Wie produktiv?
-    q_fairness = models.PositiveSmallIntegerField()       # Wie fair?
-    q_atmosphere = models.PositiveSmallIntegerField()     # Arbeitsatmosphäre
-    q_digitalization = models.PositiveSmallIntegerField() # Digitalisierung
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,31 +96,50 @@ class Rating(models.Model):
         ]
         ordering = ['-updated_at']
 
-    def clean(self):
-        from django.core.exceptions import ValidationError
-
-        for field in self.RATING_FIELDS:
-            value = getattr(self, field)
-            if value is not None and not (self.SCALE_MIN <= value <= self.SCALE_MAX):
-                raise ValidationError(
-                    {field: f'Muss zwischen {self.SCALE_MIN} und {self.SCALE_MAX} liegen.'}
-                )
-
-    @property
-    def RATING_FIELDS(self):
-        return [
-            'q_interest', 'q_productivity', 'q_fairness',
-            'q_atmosphere', 'q_digitalization',
-        ]
-
     @property
     def overall(self):
-        """Gesamtscore dieser einen Bewertung (Durchschnitt der 5 Kategorien)."""
-        values = [getattr(self, f) for f in self.RATING_FIELDS]
+        """Gesamtscore dieser einen Bewertung (Durchschnitt aller Antworten)."""
+        values = list(self.answers.values_list('value', flat=True))
+        if not values:
+            return 0.0
         return sum(values) / len(values)
 
     def __str__(self):
         return f'{self.pupil} → {self.teacher}'
+
+
+class RatingAnswer(models.Model):
+    """Eine einzelne Antwort (Wert 1–10) einer Bewertung auf eine Frage."""
+
+    SCALE_MIN = 1
+    SCALE_MAX = 10
+
+    rating = models.ForeignKey(
+        Rating, on_delete=models.CASCADE, related_name='answers'
+    )
+    question = models.ForeignKey(
+        RatingQuestion, on_delete=models.CASCADE, related_name='answers'
+    )
+    value = models.PositiveSmallIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['rating', 'question'], name='unique_rating_question_answer'
+            )
+        ]
+        ordering = ['question__order']
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not (self.SCALE_MIN <= self.value <= self.SCALE_MAX):
+            raise ValidationError(
+                f'Muss zwischen {self.SCALE_MIN} und {self.SCALE_MAX} liegen.'
+            )
+
+    def __str__(self):
+        return f'{self.rating}: {self.question} = {self.value}'
 
 
 class TeacherScore(models.Model):

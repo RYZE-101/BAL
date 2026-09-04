@@ -6,12 +6,12 @@ Diese Logik ist bewusst zentralisiert und getestet (siehe core/tests.py).
 from django.db import transaction
 from django.db.models import Avg
 
-from .models import Rating, TeacherScore
+from .models import Rating, RatingAnswer, TeacherScore
 
-RATING_FIELDS = [
-    'q_interest', 'q_productivity', 'q_fairness',
-    'q_atmosphere', 'q_digitalization',
-]
+# Klassische Kategorie-Keys (für per-Kategorie-Scores & Achievements).
+# Die 5 Standardfragen werden mit genau diesen Keys migriert. Neue Fragen
+# ohne Key tragen nur zum Gesamtscore (avg_overall) bei.
+CATEGORY_KEYS = ['interest', 'productivity', 'fairness', 'atmosphere', 'digitalization']
 
 # Achievement-Slugs, die wir automatisch vergeben (Definitionen im Admin anlegen)
 ACH_TOP1 = 'top-1'
@@ -21,38 +21,31 @@ ACH_MOST_DIGITAL = 'most-digital'
 ACH_MOST_INTERESTING = 'most-interesting'
 
 
-def _field_label(field):
-    labels = {
-        'q_interest': 'Interesse',
-        'q_productivity': 'Produktivität',
-        'q_fairness': 'Fairness',
-        'q_atmosphere': 'Atmosphäre',
-        'q_digitalization': 'Digitalisierung',
-    }
-    return labels[field]
-
-
 def recompute_teacher_score(teacher_id):
-    """Aggregiert alle Ratings einer Lehrkraft neu in TeacherScore."""
-    teacher_score, _ = TeacherScore.objects.get_or_create(teacher_id=teacher_id)
-    ratings = Rating.objects.filter(teacher_id=teacher_id)
+    """Aggregiert alle Ratings einer Lehrkraft neu in TeacherScore.
 
-    teacher_score.rating_count = ratings.count()
-    if teacher_score.rating_count == 0:
-        teacher_score.avg_interest = 0
-        teacher_score.avg_productivity = 0
-        teacher_score.avg_fairness = 0
-        teacher_score.avg_atmosphere = 0
-        teacher_score.avg_digitalization = 0
+    Gesamtscore = Durchschnitt ALLER Antworten (RatingAnswer) der Lehrkraft,
+    unabhängig davon, ob die zugehörige Frage aktuell aktiv ist (so bleiben
+    historische Antworten für die Vergleichbarkeit erhalten).
+    Kategorie-Scores werden nur für Fragen mit klassischem ``key`` berechnet.
+    """
+    teacher_score, _ = TeacherScore.objects.get_or_create(teacher_id=teacher_id)
+    rating_count = Rating.objects.filter(teacher_id=teacher_id).count()
+    answers = RatingAnswer.objects.filter(rating__teacher_id=teacher_id)
+
+    teacher_score.rating_count = rating_count
+    if rating_count == 0:
+        for key in CATEGORY_KEYS:
+            setattr(teacher_score, f'avg_{key}', 0)
         teacher_score.avg_overall = 0
     else:
-        for field in RATING_FIELDS:
-            avg = ratings.aggregate(models_avg=Avg(field))['models_avg']
-            setattr(teacher_score, f'avg_{field[2:]}', round(float(avg), 2))
-        teacher_score.avg_overall = round(
-            sum(getattr(teacher_score, f'avg_{f[2:]}') for f in RATING_FIELDS) / len(RATING_FIELDS),
-            2,
-        )
+        for key in CATEGORY_KEYS:
+            avg = answers.filter(question__key=key).aggregate(
+                models_avg=Avg('value')
+            )['models_avg']
+            setattr(teacher_score, f'avg_{key}', round(float(avg or 0), 2))
+        overall = answers.aggregate(models_avg=Avg('value'))['models_avg']
+        teacher_score.avg_overall = round(float(overall or 0), 2)
     teacher_score.save()
     return teacher_score
 
