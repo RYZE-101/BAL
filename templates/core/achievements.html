@@ -14,7 +14,10 @@
                 <p style="margin-top: var(--space-3); color: var(--accent)">Aktuell: {{ achievement.holders.all|length }} Lehrkraft / Lehrkräfte</p>
             </a>
         {% empty %}
-            <p>Noch keine Auszeichnungen definiert.</p>
+            <div class="empty-state grid-span">
+                <div class="empty-icon">🏆</div>
+                <p>Noch keine Auszeichnungen definiert.</p>
+            </div>
         {% endfor %}
     </div>
 </div>

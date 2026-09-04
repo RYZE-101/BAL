@@ -709,6 +709,31 @@ a:hover { text-decoration: underline; }
     transform: none;
 }
 
+/* ---------- Empty-State (zentrierter Platzhalter) ---------- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-3);
+    min-height: 220px;
+    padding: var(--space-7) var(--space-5);
+    color: var(--text-tertiary);
+}
+.empty-state .empty-icon {
+    font-size: var(--fs-3xl);
+    opacity: 0.55;
+}
+.empty-state p {
+    margin: 0;
+    font-size: var(--fs-lg);
+    color: var(--text-secondary);
+    max-width: 480px;
+}
+/* In Grids (z.B. Ach- oder Teacher-Grid) über die volle Breite */
+.empty-state.grid-span { grid-column: 1 / -1; }
+
 /* ---------- Bewegung reduzieren (Barrierefreiheit) ---------- */
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }

@@ -25,7 +25,10 @@
                 </div>
             </a>
         {% empty %}
-            <p>Noch keine Lehrkräfte vorhanden.</p>
+            <div class="empty-state grid-span">
+                <div class="empty-icon">👩‍🏫</div>
+                <p>Noch keine Lehrkräfte vorhanden.</p>
+            </div>
         {% endfor %}
     </div>
 </div>
