@@ -42,9 +42,14 @@ Lehrer-Ranking-Plattform. Status und Reihenfolge der Arbeit.
 - Design-Tokens (CSS-Variablen), prefers-color-scheme + manueller Toggle (localStorage),
   responsive, dezent Animationen.
 
-### ⬜ 8. Server-Setup + CI/CD
-- Nginx (HTTP, SSL-fähig vorbereitet), Gunicorn, systemd, GitHub Actions.
+### ✅ 8. Server-Setup + CI/CD
+- Ubuntu-Server eingerichtet: nginx (Reverse Proxy, HTTP, SSL-Block kommentiert),
+  Gunicorn (systemd `bal.service`, Socket unter /run/bal), venv, SQLite.
+- GitHub Actions (`deploy.yml`): push → rsync → deploy.sh auf Server.
+- Deploy-Key für CI erzeugt (Secret `DEPLOY_SSH_KEY`).
 
-### ⬜ 9. Deploy + E2E-Test
+### ✅ 9. Deploy + E2E-Test
+- Live unter http://212.227.39.26 (alle Seiten 200, Ranking/Podest funktioniert).
 
 ### ⬜ 10. Abschluss-Review
+- Offen: Secret in GitHub eintragen, danach erster echter CI-Deploy.
