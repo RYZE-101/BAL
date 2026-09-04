@@ -1,0 +1,42 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">BAL Admin</a></div>
+{% if user.is_authenticated %}{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root { --bal-admin-accent: #0071e3; --bal-admin-ink: #1d1d1f; }
+
+    /* Header in BAL-Akzentfarbe (Apple-Blau) */
+    #header { background: var(--bal-admin-accent); }
+    #branding h1, #branding h1 a:link, #branding h1 a:visited { color: #fff; }
+    #user-tools, #logout-form button, #user-tools a { color: rgba(255, 255, 255, 0.92); }
+    #user-tools a:focus, #user-tools a:hover, #logout-form button:focus,
+    #logout-form button:hover { color: #fff; border-bottom-color: rgba(255, 255, 255, 0.6); }
+
+    /* Breadcrumbs dezent dunkel */
+    div.breadcrumbs { background: var(--bal-admin-ink); color: #fff; }
+    div.breadcrumbs a { color: #fff; }
+
+    /* Modultitel & Tabellen-Header */
+    .module h2, .module caption, .inline-group h2,
+    #changelist-filter h2 { background: var(--bal-admin-accent); }
+
+    /* Links in Akzentfarbe */
+    a:link, a:visited { color: var(--bal-admin-accent); }
+
+    /* Aktiver Sidebar-/Navigationseintrag */
+    .selector-chosen h2 { background: var(--bal-admin-accent); }
+
+    /* Felder mit Foto-Preview sauber ausrichten */
+    .field-photo_preview img { border-radius: 12px; }
+</style>
+{% endblock %}

@@ -6,7 +6,7 @@
     <h1 class="section-title" style="margin-top: var(--space-4)">{{ achievement.icon }} {{ achievement.name }}</h1>
     <p style="color: var(--text-secondary)">{{ achievement.description }}</p>
 
-    <h2 class="section-title" style="font-size: var(--fs-xl)">Aktuelle Inhaber</h2>
+    <h2 class="section-title title-xl">Aktuelle Inhaber</h2>
     <div class="teacher-grid">
         {% for ta in current %}
             <a class="card teacher-card" href="{% url 'teacher_detail' ta.teacher.slug %}">
@@ -23,7 +23,7 @@
     </div>
 
     {% if former %}
-    <h2 class="section-title" style="font-size: var(--fs-xl); margin-top: var(--space-7)">Ehemalige Inhaber</h2>
+    <h2 class="section-title title-xl" style="margin-top: var(--space-7)">Ehemalige Inhaber</h2>
     <ul style="color: var(--text-secondary)">
         {% for ta in former %}
             <li><a href="{% url 'teacher_detail' ta.teacher.slug %}">{{ ta.teacher.name }}</a> (vergeben am {{ ta.awarded_at|date:"d.m.Y" }})</li>
