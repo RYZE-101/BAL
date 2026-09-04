@@ -673,6 +673,29 @@ body.menu-open { overflow: hidden; }
     color: var(--accent);
 }
 
+/* Tick-Marks: 10 dezente Rastpunkte unter dem Slider */
+.range-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding: 0 2px;
+}
+.range-ticks span {
+    width: 2px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 1px;
+}
+
+/* Skalen-Beschriftung an beiden Enden */
+.scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
 /* ---------- Alerts ---------- */
 .alert {
     padding: var(--space-4) var(--space-5);

@@ -18,6 +18,13 @@
                     {{ field }}
                     <span class="range-value">{{ field.value|default_if_none:"5" }}</span>
                 </div>
+                <div class="range-ticks" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <div class="scale-labels">
+                    <span>Sehr schlecht</span>
+                    <span>Hervorragend</span>
+                </div>
             </div>
         {% endfor %}
         <button type="submit" class="btn btn-primary btn-lg btn-block">
