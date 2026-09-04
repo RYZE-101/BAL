@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}BAL – Lehrer-Ranking{% endblock %}
+{% block content %}
+<section class="hero">
+    <h1>Deine Lehrkräfte. <br>Deine Stimme.</h1>
+    <p>Bewerte deine Lehrkräfte anonym nach Unterricht, Fairness und Digitalisierung – und sieh, wer in der Live-Wertung ganz oben steht.</p>
+    <a class="btn btn-primary btn-lg" href="{% url 'teacher_list' %}">Lehrkräfte entdecken</a>
+    <div class="hero-stats">
+        <div><strong>{{ total_teachers }}</strong>Lehrkräfte</div>
+        <div><strong>{{ total_ratings }}</strong>Bewertungen</div>
+    </div>
+</section>
+
+{% if top3 %}
+<section class="section container">
+    <div class="section-head">
+        <h2 class="section-title">Aktuelle Top 3</h2>
+        <a href="{% url 'ranking' %}">Ganze Wertung →</a>
+    </div>
+    <div class="ranking-podium">
+        {% for score in top3 %}
+            {% with place=forloop.counter %}
+            <div class="podium-place podium-{{ place }}">
+                <a href="{% url 'teacher_detail' score.teacher.slug %}" style="color:inherit">
+                    <div class="podium-card">
+                        <div class="podium-rank">{{ place }}.</div>
+                        <div class="podium-name">{{ score.teacher.name }}</div>
+                        <div class="rank-score">{{ score.avg_overall|floatformat:1 }}</div>
+                    </div>
+                </a>
+            </div>
+            {% endwith %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

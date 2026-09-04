@@ -1,0 +1,11 @@
+{% comment %}
+Lehrkraft-Foto oder Platzhalter.
+Verwendet: teacher.photo
+{% endcomment %}
+{% if teacher.photo %}
+    <img class="{{ class }}" src="{{ teacher.photo.url }}" alt="{{ teacher.name }}">
+{% else %}
+    <div class="avatar-placeholder {{ class }}">
+        {{ teacher.name|slice:":1"|upper }}{% if teacher.name|length > 1 %}{{ teacher.name|slice:"-1:"|upper }}{% endif %}
+    </div>
+{% endif %}

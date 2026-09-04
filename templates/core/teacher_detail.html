@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ teacher.name }} – BAL{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="profile-header">
+        {% include 'core/_teacher_photo.html' with class='photo' %}
+        <div>
+            <h1>{{ teacher.name }}</h1>
+            <div class="subjects">
+                {% for s in teacher.subjects.all %}{{ s.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+            </div>
+            {% if teacher.bio %}<p>{{ teacher.bio }}</p>{% endif %}
+            {% if teacher.score.rating_count > 0 %}
+                <div class="overall-score">{{ teacher.score.avg_overall|floatformat:1 }}</div>
+                <div class="subjects">aus {{ teacher.score.rating_count }} Bewertung{{ teacher.score.rating_count|pluralize:"en" }}
+                    · Platz {{ teacher.score.rank }}
+                    {% if teacher.score.rank %}{% endif %}</div>
+            {% else %}
+                <div class="subjects">Noch keine Bewertungen vorhanden.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if achievements %}
+    <section class="section">
+        <h2 class="section-title">Auszeichnungen</h2>
+        <div class="ach-grid">
+            {% for ta in achievements %}
+                <a class="card ach-card" href="{% url 'achievement_detail' ta.achievement.slug %}">
+                    <div class="ach-icon">{{ ta.achievement.icon }}</div>
+                    <h3>{{ ta.achievement.name }}</h3>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if teacher.score.rating_count > 0 %}
+    <section class="section">
+        <h2 class="section-title">Durchschnitt pro Kategorie</h2>
+        <div class="card" style="padding: var(--space-5)">
+            <div class="score-bars">
+                {% with s=teacher.score %}
+                <div class="score-bar-row">
+                    <span class="label">Interesse</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_interest 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ s.avg_interest|floatformat:1 }}</span>
+                </div>
+                <div class="score-bar-row">
+                    <span class="label">Produktivität</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_productivity 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ s.avg_productivity|floatformat:1 }}</span>
+                </div>
+                <div class="score-bar-row">
+                    <span class="label">Fairness</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_fairness 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ s.avg_fairness|floatformat:1 }}</span>
+                </div>
+                <div class="score-bar-row">
+                    <span class="label">Atmosphäre</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_atmosphere 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ s.avg_atmosphere|floatformat:1 }}</span>
+                </div>
+                <div class="score-bar-row">
+                    <span class="label">Digitalisierung</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_digitalization 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ s.avg_digitalization|floatformat:1 }}</span>
+                </div>
+                {% endwith %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="section">
+        {% if user.is_authenticated %}
+            {% if my_rating %}
+                <p>Du hast diese Lehrkraft bereits bewertet. Du kannst deine Bewertung jederzeit aktualisieren.</p>
+            {% endif %}
+            <a class="btn btn-primary btn-lg" href="{% url 'rate_teacher' teacher.slug %}">
+                {% if my_rating %}Bewertung bearbeiten{% else %}Diese Lehrkraft bewerten{% endif %}
+            </a>
+        {% else %}
+            <p>Melde dich an, um diese Lehrkraft zu bewerten.</p>
+            <a class="btn btn-primary" href="{% url 'login' %}">Login</a>
+            <a class="btn btn-secondary" href="{% url 'signup' %}">Registrieren</a>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

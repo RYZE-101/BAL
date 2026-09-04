@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Auszeichnungen – BAL{% endblock %}
+{% block content %}
+<div class="container section">
+    <div class="section-head">
+        <h1 class="section-title">Auszeichnungen</h1>
+    </div>
+    <div class="ach-grid">
+        {% for achievement in achievements %}
+            <a class="card ach-card" href="{% url 'achievement_detail' achievement.slug %}">
+                <div class="ach-icon">{{ achievement.icon }}</div>
+                <h3>{{ achievement.name }}</h3>
+                <p>{{ achievement.description }}</p>
+                <p style="margin-top: var(--space-3); color: var(--accent)">Aktuell: {{ achievement.holders.all|length }} Lehrkraft / Lehrkräfte</p>
+            </a>
+        {% empty %}
+            <p>Noch keine Auszeichnungen definiert.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

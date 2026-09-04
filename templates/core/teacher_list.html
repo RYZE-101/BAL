@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Lehrkräfte – BAL{% endblock %}
+{% block content %}
+<div class="container section">
+    <div class="section-head">
+        <h1 class="section-title">Alle Lehrkräfte</h1>
+        <a class="btn btn-secondary" href="{% url 'ranking' %}">Zum Ranking</a>
+    </div>
+    <div class="teacher-grid">
+        {% for teacher in teachers %}
+            <a class="card teacher-card" href="{% url 'teacher_detail' teacher.slug %}">
+                {% include 'core/_teacher_photo.html' with class='teacher-photo' %}
+                <div class="teacher-card-body">
+                    <h3>{{ teacher.name }}</h3>
+                    <div class="subjects">
+                        {% for s in teacher.subjects.all %}{{ s.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                    </div>
+                    {% if teacher.score.rating_count > 0 %}
+                        <div class="score-line">★ {{ teacher.score.avg_overall|floatformat:1 }}
+                            <span class="rank-delta {% if teacher.score.rank %}new{% endif %}">Platz {{ teacher.score.rank }}</span>
+                        </div>
+                    {% else %}
+                        <div class="score-line">Noch keine Bewertungen</div>
+                    {% endif %}
+                </div>
+            </a>
+        {% empty %}
+            <p>Noch keine Lehrkräfte vorhanden.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

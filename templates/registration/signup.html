@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Registrieren – BAL{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="card auth-card">
+        <h1>Konto erstellen</h1>
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div class="alert alert-error">{{ field.errors }}</div>{% endif %}
+                    {% if field.help_text %}<small style="color: var(--text-tertiary)">{{ field.help_text }}</small>{% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Registrieren</button>
+        </form>
+        <p style="text-align:center; margin-top: var(--space-5); color: var(--text-secondary)">
+            Bereits registriert? <a href="{% url 'login' %}">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

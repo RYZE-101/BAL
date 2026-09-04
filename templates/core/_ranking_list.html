@@ -1,0 +1,22 @@
+{% for score in scores %}
+    <div class="ranking-row fade-in">
+        <span class="rank-number">{{ score.rank }}.</span>
+        <a href="{% url 'teacher_detail' score.teacher.slug %}" style="display:flex">
+            {% if score.teacher.photo %}
+                <img class="thumb" src="{{ score.teacher.photo.url }}" alt="{{ score.teacher.name }}">
+            {% else %}
+                <div class="avatar-placeholder">{{ score.teacher.name|slice:":1"|upper }}</div>
+            {% endif %}
+        </a>
+        <a class="rank-name" href="{% url 'teacher_detail' score.teacher.slug %}">{{ score.teacher.name }}</a>
+        <span class="rank-score">{{ score.avg_overall|floatformat:1 }}<small> / 10</small></span>
+        <span class="rank-delta
+            {% if score.delta < 0 %}up{% elif score.delta > 0 %}down{% else %}new{% endif %}">
+            {% if score.delta < 0 %}▲ {{ score.delta|stringformat:"d"|slice:"1:" }}
+            {% elif score.delta > 0 %}▼ {{ score.delta }}
+            {% else %}–{% endif %}
+        </span>
+    </div>
+{% empty %}
+    <p>Noch keine Bewertungen vorhanden.</p>
+{% endfor %}
