@@ -1,18 +1,62 @@
 /* BAL Frontend-JavaScript */
 
-// Theme-Umschalter (mit Persistenz in localStorage)
+// Theme-Umschalter (mit Persistenz in localStorage) — Desktop- und Mobile-Toggle
 (function () {
-    var toggle = document.getElementById('theme-toggle');
-    if (!toggle) return;
+    var toggles = document.querySelectorAll('#theme-toggle, #theme-toggle-mobile');
+    if (!toggles.length) return;
 
     function apply(theme) {
         document.documentElement.dataset.theme = theme;
         localStorage.setItem('bal-theme', theme);
     }
 
+    toggles.forEach(function (toggle) {
+        toggle.addEventListener('click', function () {
+            var current = document.documentElement.dataset.theme;
+            apply(current === 'dark' ? 'light' : 'dark');
+        });
+    });
+})();
+
+// Mobile-Navigation (Hamburger-Menü)
+(function () {
+    var toggle = document.getElementById('nav-toggle');
+    var menu = document.getElementById('mobile-menu');
+    if (!toggle || !menu) return;
+
+    function open() {
+        menu.classList.add('open');
+        toggle.classList.add('open');
+        document.body.classList.add('menu-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        menu.setAttribute('aria-hidden', 'false');
+    }
+
+    function close() {
+        menu.classList.remove('open');
+        toggle.classList.remove('open');
+        document.body.classList.remove('menu-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-hidden', 'true');
+    }
+
     toggle.addEventListener('click', function () {
-        var current = document.documentElement.dataset.theme;
-        apply(current === 'dark' ? 'light' : 'dark');
+        if (menu.classList.contains('open')) close(); else open();
+    });
+
+    // Beim Antippen eines Menüpunkts schließen
+    menu.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', close);
+    });
+
+    // Beim Klick auf den Overlay-Hintergrund schließen
+    menu.addEventListener('click', function (e) {
+        if (e.target === menu || e.target.classList.contains('mobile-menu-inner')) close();
+    });
+
+    // Escape schließt das Menü
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
     });
 })();
 
