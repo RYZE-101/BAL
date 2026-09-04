@@ -459,12 +459,11 @@ body.menu-open { overflow: hidden; }
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    /* Dezente Top-3-Zelebration: einmaliges Einblenden + leichte Skalierung */
     animation: podiumRise 0.7s var(--ease) both;
 }
-.podium-1 .podium-card { background: var(--gold-soft); border-top: 4px solid var(--gold); height: 220px; }
-.podium-2 .podium-card { background: var(--silver-soft); border-top: 4px solid var(--silver); height: 170px; }
-.podium-3 .podium-card { background: var(--bronze-soft); border-top: 4px solid var(--bronze); height: 130px; }
+.podium-1 .podium-card { background: var(--gold-soft); border-top: 4px solid var(--gold); min-height: 280px; }
+.podium-2 .podium-card { background: var(--silver-soft); border-top: 4px solid var(--silver); min-height: 230px; }
+.podium-3 .podium-card { background: var(--bronze-soft); border-top: 4px solid var(--bronze); min-height: 180px; }
 .podium-1 .podium-card { animation-delay: 0.05s; }
 .podium-2 .podium-card { animation-delay: 0.15s; }
 .podium-3 .podium-card { animation-delay: 0.25s; }
@@ -473,6 +472,26 @@ body.menu-open { overflow: hidden; }
 .podium-3 .podium-rank { color: var(--bronze); }
 .podium-rank { font-size: var(--fs-xl); font-weight: 700; }
 .podium-name { font-weight: 600; }
+
+/* Podest-Profilbild (rund, farbiger Ring pro Platz) */
+.podium-photo-wrap { display: flex; justify-content: center; }
+.podium-photo {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto var(--space-1);
+}
+.avatar-placeholder.podium-photo {
+    width: 84px;
+    height: 84px;
+    font-size: var(--fs-xl);
+    aspect-ratio: auto;
+    border-radius: 50%;
+}
+.podium-1 .podium-photo { box-shadow: 0 0 0 3px var(--gold); }
+.podium-2 .podium-photo { box-shadow: 0 0 0 3px var(--silver); }
+.podium-3 .podium-photo { box-shadow: 0 0 0 3px var(--bronze); }
 
 @keyframes podiumRise {
     from { opacity: 0; transform: translateY(16px) scale(0.96); }

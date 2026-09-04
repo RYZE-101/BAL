@@ -14,6 +14,9 @@
             <div class="podium-place podium-{{ forloop.counter }}">
                 <a href="{% url 'teacher_detail' score.teacher.slug %}" style="color:inherit">
                     <div class="podium-card">
+                        <div class="podium-photo-wrap">
+                            {% include 'core/_teacher_photo.html' with class='podium-photo' %}
+                        </div>
                         <div class="podium-rank">{{ forloop.counter }}.</div>
                         <div class="podium-name">{{ score.teacher.name }}</div>
                         <div class="rank-score">{{ score.avg_overall|floatformat:1 }}</div>
