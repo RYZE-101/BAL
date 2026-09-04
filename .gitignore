@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+.env
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+
+# Deploy-Keys (NIE einchecken!)
+deploy_key
+deploy_key.pub
+*.pem
