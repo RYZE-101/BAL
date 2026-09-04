@@ -1,11 +1,20 @@
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404, redirect, render
 
 from . import services
 from .forms import RatingForm, UserSignupForm
-from .models import Achievement, Rating, Teacher, TeacherAchievement, TeacherScore
+from .models import (
+    Achievement,
+    Rating,
+    RatingAnswer,
+    RatingQuestion,
+    Teacher,
+    TeacherAchievement,
+    TeacherScore,
+)
 
 
 def home(request):
@@ -50,10 +59,20 @@ def teacher_detail(request, slug):
             pupil=request.user, teacher=teacher
         ).first()
         rating_form = RatingForm(instance=my_rating)
+
+    # Dynamische Kategorien: Durchschnitt pro aktiver Frage
+    categories = []
+    for q in RatingQuestion.objects.filter(is_active=True).order_by('order', 'id'):
+        avg = RatingAnswer.objects.filter(
+            rating__teacher=teacher, question=q
+        ).aggregate(a=Avg('value'))['a']
+        categories.append({'label': q.text, 'avg': round(avg or 0, 1)})
+
     return render(request, 'core/teacher_detail.html', {
         'teacher': teacher,
         'my_rating': my_rating,
         'rating_form': rating_form,
+        'categories': categories,
         'achievements': teacher.achievements.filter(is_current=True),
     })
 
@@ -63,22 +82,20 @@ def rate_teacher(request, slug):
     teacher = get_object_or_404(Teacher, slug=slug, is_active=True)
     existing = Rating.objects.filter(pupil=request.user, teacher=teacher).first()
     if request.method == 'POST':
-        form = RatingForm(request.POST, instance=existing)
+        form = RatingForm(request.POST, instance=existing,
+                          pupil=request.user, teacher=teacher)
         if form.is_valid():
-            rating = form.save(commit=False)
-            rating.pupil = request.user
-            rating.teacher = teacher
-            rating.save()
-            # Scores & Ranking & Achievements aktualisieren
+            rating = form.save()
             services.recompute_teacher_score(teacher.pk)
             services.update_ranking()
             services.update_achievements()
             return redirect('teacher_detail', slug=teacher.slug)
     else:
-        form = RatingForm(instance=existing)
+        form = RatingForm(instance=existing, pupil=request.user, teacher=teacher)
     return render(request, 'core/rate_teacher.html', {
         'teacher': teacher,
         'form': form,
+        'my_rating': existing is not None,
     })
 
 

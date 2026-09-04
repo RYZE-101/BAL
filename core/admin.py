@@ -9,6 +9,8 @@ from . import services
 from .models import (
     Achievement,
     Rating,
+    RatingAnswer,
+    RatingQuestion,
     Subject,
     Teacher,
     TeacherAchievement,
@@ -84,6 +86,20 @@ class TeacherAdmin(admin.ModelAdmin):
             return '–'
 
 
+class RatingAnswerInline(admin.TabularInline):
+    model = RatingAnswer
+    extra = 0
+    can_delete = False
+    verbose_name = 'Antwort'
+    verbose_name_plural = 'Antworten'
+
+    def get_readonly_fields(self, request, obj=None):
+        return [f.name for f in self.model._meta.fields]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
     """Bewertungen lesbar für Moderation; Felder schreibgeschützt, Löschen erlaubt."""
@@ -92,14 +108,32 @@ class RatingAdmin(admin.ModelAdmin):
     list_filter = ('teacher', 'created_at')
     search_fields = ('pupil__username', 'teacher__name')
     date_hierarchy = 'created_at'
-    readonly_fields = (
-        'pupil', 'teacher',
-        'q_interest', 'q_productivity', 'q_fairness',
-        'q_atmosphere', 'q_digitalization',
-        'overall', 'created_at', 'updated_at',
-    )
+    readonly_fields = ('pupil', 'teacher', 'overall', 'created_at', 'updated_at')
+    inlines = [RatingAnswerInline]
 
     def has_add_permission(self, request):
+        return False
+
+
+@admin.register(RatingQuestion)
+class RatingQuestionAdmin(admin.ModelAdmin):
+    """Fragen im Admin verwalten: Text, Reihenfolge, aktiv/inaktiv.
+
+    Löschen wird verhindert (historische Antworten bleiben erhalten); eine
+    Frage wird stattdessen über is_active=False deaktiviert.
+    """
+
+    list_display = ('order', 'text', 'key', 'is_active', 'answer_count')
+    list_editable = ('is_active',)
+    list_filter = ('is_active',)
+    search_fields = ('text', 'key')
+    ordering = ('order', 'id')
+
+    @admin.display(description='Antworten')
+    def answer_count(self, obj):
+        return obj.answers.count()
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 
