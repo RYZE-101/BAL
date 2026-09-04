@@ -763,6 +763,12 @@ body.menu-open { overflow: hidden; }
     font-size: var(--fs-3xl);
     opacity: 0.55;
 }
+.empty-state .empty-icon svg {
+    width: 48px;
+    height: 48px;
+    color: var(--text-tertiary);
+    opacity: 0.8;
+}
 .empty-state p {
     margin: 0;
     font-size: var(--fs-lg);
