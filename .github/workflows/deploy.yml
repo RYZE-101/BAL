@@ -14,15 +14,21 @@ jobs:
 
       - name: Set up SSH (Deploy-Key)
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq rsync >/dev/null
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H 212.227.39.26 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H 212.227.39.26 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
+            root@212.227.39.26 'echo SSH_OK; command -v rsync || echo RSYNC_MISSING'
 
       - name: Deploy code to server (rsync)
         run: |
           rsync -avz --delete --no-o --no-g \
-            -e "ssh -i ~/.ssh/deploy_key" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null" \
             --exclude '.git' \
             --exclude '.venv' \
             --exclude 'db.sqlite3' \
@@ -33,5 +39,6 @@ jobs:
 
       - name: Run deploy script on server
         run: |
-          ssh -i ~/.ssh/deploy_key root@212.227.39.26 \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
+            root@212.227.39.26 \
             'bash /opt/bal/deploy.sh'

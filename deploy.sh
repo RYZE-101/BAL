@@ -44,4 +44,7 @@ fi
 # Nginx-Konfiguration neu laden
 systemctl reload nginx 2>/dev/null || systemctl restart nginx
 
+# Marker für CI-Verifikation
+date -u '+%Y-%m-%dT%H:%M:%SZ' > /opt/bal/.last_deploy
+
 echo "Deploy abgeschlossen."
