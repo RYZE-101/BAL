@@ -87,6 +87,9 @@ systemctl enable bal
 echo "==> Eigentümer korrigieren (Gunicorn-Socket kommt nach /run/bal)"
 chown -R root:root "$APP_DIR"
 chown "$DJANGO_USER":"$DJANGO_USER" "$APP_DIR/media" "$APP_DIR/staticfiles" 2>/dev/null || true
+# SQLite braucht Schreibzugriff auf das Verzeichnis (Journal/WAL-Dateien):
+chown root:www-data "$APP_DIR"
+chmod 2775 "$APP_DIR"
 
 echo "==> Nginx-Konfig testen + aktivieren"
 nginx -t
