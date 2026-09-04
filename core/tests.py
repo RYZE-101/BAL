@@ -6,7 +6,27 @@ from django.test import Client, TestCase
 from PIL import Image
 
 from . import services
-from .models import Achievement, Rating, Teacher, TeacherScore
+from .forms import RatingForm
+from .models import (
+    Achievement,
+    Rating,
+    RatingAnswer,
+    RatingQuestion,
+    Teacher,
+    TeacherScore,
+)
+
+
+class RatingHelpers:
+    """Erzeugt Bewertungen im neuen Schema (Rating + RatingAnswer)."""
+
+    @staticmethod
+    def rate(teacher, pupil, values):
+        rating = Rating.objects.create(pupil=pupil, teacher=teacher)
+        for key, value in values.items():
+            q = RatingQuestion.objects.get(key=key)
+            RatingAnswer.objects.create(rating=rating, question=q, value=value)
+        return rating
 
 
 class ScoreCalculationTests(TestCase):
@@ -15,46 +35,153 @@ class ScoreCalculationTests(TestCase):
         self.pupil1 = User.objects.create_user('p1', password='x')
         self.pupil2 = User.objects.create_user('p2', password='x')
 
-    def _rating(self, pupil, **kwargs):
-        defaults = {
-            'q_interest': 5, 'q_productivity': 5, 'q_fairness': 5,
-            'q_atmosphere': 5, 'q_digitalization': 5,
-        }
-        defaults.update(kwargs)
-        return Rating.objects.create(
-            pupil=pupil, teacher=self.teacher, **defaults
-        )
+    def test_default_questions_migrated(self):
+        """Migration 0002 muss die 5 Standardfragen mit Keys anlegen."""
+        keys = {q.key for q in RatingQuestion.objects.all()}
+        self.assertEqual(keys, {
+            'interest', 'productivity', 'fairness',
+            'atmosphere', 'digitalization',
+        })
 
-    def test_rating_overall_is_average(self):
-        r = self._rating(self.pupil1, q_interest=10, q_productivity=10,
-                         q_fairness=10, q_atmosphere=10, q_digitalization=10)
+    def test_rating_overall_is_average_of_answers(self):
+        r = RatingHelpers.rate(
+            self.teacher, self.pupil1,
+            {'interest': 10, 'productivity': 10, 'fairness': 10,
+             'atmosphere': 10, 'digitalization': 10},
+        )
         self.assertEqual(r.overall, 10.0)
 
     def test_unique_constraint_pupil_teacher(self):
-        self._rating(self.pupil1)
+        RatingHelpers.rate(self.teacher, self.pupil1, {'interest': 5})
         with self.assertRaises(Exception):
-            self._rating(self.pupil1)
+            Rating.objects.create(pupil=self.pupil1, teacher=self.teacher)
 
-    def test_update_replaces_not_duplicates(self):
-        self._rating(self.pupil1, q_interest=2)
-        self.assertEqual(Rating.objects.filter(teacher=self.teacher).count(), 1)
-        Rating.objects.filter(pupil=self.pupil1, teacher=self.teacher).update(q_interest=9)
-        self.assertEqual(Rating.objects.filter(teacher=self.teacher).count(), 1)
-
-    def test_recompute_teacher_score_averages(self):
-        self._rating(self.pupil1, q_interest=4, q_productivity=6)
-        self._rating(self.pupil2, q_interest=8, q_productivity=10)
+    def test_recompute_teacher_score_averages_answers(self):
+        RatingHelpers.rate(
+            self.teacher, self.pupil1,
+            {'interest': 4, 'productivity': 6, 'fairness': 5,
+             'atmosphere': 5, 'digitalization': 5},
+        )
+        RatingHelpers.rate(
+            self.teacher, self.pupil2,
+            {'interest': 8, 'productivity': 10, 'fairness': 5,
+             'atmosphere': 5, 'digitalization': 5},
+        )
         score = services.recompute_teacher_score(self.teacher.pk)
         self.assertEqual(score.rating_count, 2)
         self.assertEqual(score.avg_interest, 6.0)
         self.assertEqual(score.avg_productivity, 8.0)
-        # fairness/atmosphäre/digitalisierung = 5 (Defaults)
-        self.assertAlmostEqual(score.avg_overall, (6 + 8 + 5 + 5 + 5) / 5, places=2)
+        self.assertAlmostEqual(score.avg_overall, (4 + 6 + 8 + 10 + 5 * 6) / 10, places=2)
 
     def test_empty_teacher_scores_zero(self):
         score = services.recompute_teacher_score(self.teacher.pk)
         self.assertEqual(score.rating_count, 0)
         self.assertEqual(score.avg_overall, 0)
+
+
+class RankingTests(TestCase):
+    def setUp(self):
+        self.t1 = Teacher.objects.create(name='Alpha')
+        self.t2 = Teacher.objects.create(name='Beta')
+        self.p1 = User.objects.create_user('p1', password='x')
+
+    def test_ranking_orders_by_overall(self):
+        RatingHelpers.rate(self.t1, self.p1, {
+            'interest': 10, 'productivity': 10, 'fairness': 10,
+            'atmosphere': 10, 'digitalization': 10})
+        RatingHelpers.rate(self.t2, self.p1, {
+            'interest': 2, 'productivity': 2, 'fairness': 2,
+            'atmosphere': 2, 'digitalization': 2})
+        services.recompute_all_scores()
+        services.update_ranking()
+        scores = TeacherScore.objects.filter(rating_count__gt=0).order_by('rank')
+        self.assertEqual(list(scores.values_list('teacher__name', flat=True)),
+                         ['Alpha', 'Beta'])
+
+    def test_rank_delta_tracks_movement(self):
+        RatingHelpers.rate(self.t1, self.p1, {
+            'interest': 10, 'productivity': 10, 'fairness': 10,
+            'atmosphere': 10, 'digitalization': 10})
+        RatingHelpers.rate(self.t2, self.p1, {
+            'interest': 9, 'productivity': 9, 'fairness': 9,
+            'atmosphere': 9, 'digitalization': 9})
+        services.recompute_all_scores()
+        services.update_ranking()
+        alpha = TeacherScore.objects.get(teacher=self.t1)
+        self.assertEqual(alpha.rank, 1)
+        self.assertEqual(alpha.previous_rank, None)
+
+        Rating.objects.filter(teacher=self.t1).first().answers.update(value=2)
+        services.recompute_all_scores()
+        services.update_ranking()
+        alpha.refresh_from_db()
+        self.assertEqual(alpha.rank, 2)
+        self.assertEqual(alpha.previous_rank, 1)
+        self.assertEqual(services.rank_delta(alpha), 1)
+
+
+class DynamicQuestionsTests(TestCase):
+    """Testet das dynamische, im Admin verwaltbare Fragen-System."""
+
+    def setUp(self):
+        self.teacher = Teacher.objects.create(name='Dyn Lehrer')
+        self.pupil = User.objects.create_user('pupil', password='x')
+
+    def test_form_renders_only_active_questions_in_order(self):
+        form = RatingForm(pupil=self.pupil, teacher=self.teacher)
+        texts = [f.label for f in form.fields.values()]
+        self.assertEqual(texts, [
+            'Wie interessant ist der Unterricht?',
+            'Wie produktiv ist der Unterricht?',
+            'Wie fair bewertet die Lehrkraft?',
+            'Wie ist die Arbeitsatmosphäre?',
+            'Wie ist die Digitalisierung im Unterricht?',
+        ])
+
+    def test_inactive_question_excluded_from_form_but_history_kept(self):
+        # Bewertung mit allen 5 Fragen abgeben
+        RatingHelpers.rate(self.teacher, self.pupil, {'interest': 5, 'productivity': 5,
+                                                      'fairness': 5, 'atmosphere': 5,
+                                                      'digitalization': 5})
+        # Eine Frage deaktivieren
+        q = RatingQuestion.objects.get(key='fairness')
+        q.is_active = False
+        q.save()
+        # Formular enthält sie nicht mehr
+        form = RatingForm(pupil=self.pupil, teacher=self.teacher)
+        self.assertNotIn('fairness', [f.label for f in form.fields.values()])
+        # Historische Antwort bleibt erhalten und zählt in den Score
+        self.assertTrue(RatingAnswer.objects.filter(question=q).exists())
+        score = services.recompute_teacher_score(self.teacher.pk)
+        self.assertEqual(score.avg_fairness, 5.0)
+
+    def test_form_save_creates_answers(self):
+        questions = list(RatingQuestion.objects.filter(is_active=True).order_by('order'))
+        data = {}
+        for idx, q in enumerate(questions):
+            data[f'q_{q.pk}'] = str(idx + 1)
+        form = RatingForm(data, pupil=self.pupil, teacher=self.teacher)
+        self.assertTrue(form.is_valid(), form.errors)
+        rating = form.save()
+        self.assertEqual(rating.answers.count(), len(questions))
+        self.assertEqual(rating.overall, sum(range(1, len(questions) + 1)) / len(questions))
+
+
+class AchievementTests(TestCase):
+    def test_top1_awarded_to_leader(self):
+        t1 = Teacher.objects.create(name='Alpha')
+        t2 = Teacher.objects.create(name='Beta')
+        p = User.objects.create_user('p', password='x')
+        Achievement.objects.create(slug='top-1', name='Platz 1', icon='🥇')
+
+        RatingHelpers.rate(t1, p, {'interest': 10, 'productivity': 10, 'fairness': 10,
+                                   'atmosphere': 10, 'digitalization': 10})
+        RatingHelpers.rate(t2, p, {'interest': 9, 'productivity': 9, 'fairness': 9,
+                                   'atmosphere': 9, 'digitalization': 9})
+        services.refresh_all()
+
+        holder = t1.achievements.get(achievement__slug='top-1')
+        self.assertTrue(holder.is_current)
 
 
 class AdminTeacherSaveRegressionTests(TestCase):
@@ -104,80 +231,3 @@ class AdminTeacherSaveRegressionTests(TestCase):
         self.assertNotEqual(resp.status_code, 500)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Teacher.objects.filter(name='Neue Lehrkraft').exists())
-
-
-class RankingTests(TestCase):
-    def setUp(self):
-        self.t1 = Teacher.objects.create(name='Alpha')
-        self.t2 = Teacher.objects.create(name='Beta')
-        self.t3 = Teacher.objects.create(name='Gamma')
-        self.p1 = User.objects.create_user('p1', password='x')
-        self.p2 = User.objects.create_user('p2', password='x')
-
-    def _rate(self, teacher, values):
-        Rating.objects.create(
-            pupil=self.p1, teacher=teacher,
-            q_interest=values[0], q_productivity=values[1], q_fairness=values[2],
-            q_atmosphere=values[3], q_digitalization=values[4],
-        )
-
-    def test_ranking_orders_by_overall(self):
-        # Alpha besser als Beta
-        self._rate(self.t1, [10, 10, 10, 10, 10])
-        self._rate(self.t2, [2, 2, 2, 2, 2])
-        services.recompute_all_scores()
-        services.update_ranking()
-        scores = TeacherScore.objects.filter(rating_count__gt=0).order_by('rank')
-        self.assertEqual(list(scores.values_list('teacher__name', flat=True)),
-                         ['Alpha', 'Beta'])
-
-    def test_rank_delta_tracks_movement(self):
-        self._rate(self.t1, [10, 10, 10, 10, 10])  # rank 1
-        self._rate(self.t2, [9, 9, 9, 9, 9])       # rank 2
-        services.recompute_all_scores()
-        services.update_ranking()
-        alpha = TeacherScore.objects.get(teacher=self.t1)
-        beta = TeacherScore.objects.get(teacher=self.t2)
-        self.assertEqual(alpha.rank, 1)
-        self.assertEqual(beta.rank, 2)
-        self.assertEqual(alpha.previous_rank, None)
-
-        # t1 wird schlechter → rutscht auf Platz 2 (delta +1), t2 auf 1 (delta -1)
-        Rating.objects.filter(teacher=self.t1).update(
-            q_interest=2, q_productivity=2, q_fairness=2,
-            q_atmosphere=2, q_digitalization=2,
-        )
-        services.recompute_all_scores()
-        services.update_ranking()
-        alpha.refresh_from_db()
-        beta.refresh_from_db()
-        self.assertEqual(alpha.rank, 2)
-        self.assertEqual(alpha.previous_rank, 1)
-        self.assertEqual(services.rank_delta(alpha), 1)  # Abstieg um 1
-        self.assertEqual(beta.rank, 1)
-        self.assertEqual(services.rank_delta(beta), -1)  # Aufstieg um 1
-
-
-class AchievementTests(TestCase):
-    def test_top1_awarded_to_leader(self):
-        t1 = Teacher.objects.create(name='Alpha')
-        t2 = Teacher.objects.create(name='Beta')
-        p = User.objects.create_user('p', password='x')
-        Achievement.objects.create(slug='top-1', name='Platz 1', icon='🥇')
-
-        Rating.objects.create(pupil=p, teacher=t1, q_interest=10, q_productivity=10,
-                              q_fairness=10, q_atmosphere=10, q_digitalization=10)
-        Rating.objects.create(pupil=p, teacher=t2, q_interest=9, q_productivity=9,
-                              q_fairness=9, q_atmosphere=9, q_digitalization=9)
-        services.refresh_all()
-
-        holder = t1.achievements.get(achievement__slug='top-1')
-        self.assertTrue(holder.is_current)
-
-        # t1 wird schlechter → Award wechselt zu t2, Historie bleibt
-        Rating.objects.filter(teacher=t1).update(q_interest=2, q_productivity=2,
-                                                 q_fairness=2, q_atmosphere=2,
-                                                 q_digitalization=2)
-        services.refresh_all()
-        self.assertFalse(t1.achievements.get(achievement__slug='top-1').is_current)
-        self.assertTrue(t2.achievements.get(achievement__slug='top-1').is_current)

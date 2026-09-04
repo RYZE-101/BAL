@@ -15,6 +15,24 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
 - **1–10** per Slider. Begründung: feinere Granularität als 1–5 → bessere
   Differenzierung und sinnvollere Rangfolge bei ähnlichen Lehrkräften.
 
+## Dynamische Bewertungsfragen (seit Migration 0002)
+- **`RatingQuestion`** (text, key, order, is_active) verwaltet die Fragen im Admin;
+  Fragen werden nicht gelöscht, sondern über `is_active=False` deaktiviert
+  (historische Antworten bleiben erhalten). Löschen ist im Admin deaktiviert.
+- **`RatingAnswer`** (rating, question, value 1–10): eine Bewertung (`Rating`)
+  besteht aus einer Antwort pro zum Bewertungszeitpunkt aktiver Frage
+  (normalisiertes Muster statt fester Spalten).
+- **Score-Logik (bewusste Entscheidung):** `avg_overall` einer Lehrkraft =
+  Durchschnitt **aller** `RatingAnswer`-Werte, unabhängig davon, ob die Frage
+  aktuell aktiv ist. So bleiben historische Antworten in der Wertung erhalten
+  und eine Deaktivierung ändert vergangene Scores nicht rückwirkend.
+- **Kategorie-Scores** (`avg_interest` … `avg_digitalization`) werden nur für
+  Fragen mit klassischem `key` berechnet (für Ranking-Achievements wie
+  "Fairste"/"Interessanteste"). Neue Fragen ohne Key tragen nur zu `avg_overall` bei.
+- Profilseite zeigt die Kategorien **dynamisch** (alle aktiven Fragen nach `order`).
+- Migration 0002 überführt die alten 5 festen `q_*`-Felder verlustfrei in
+  `RatingAnswer` (5 Fragen mit Keys anlegen, jede Rating-Zeile → 5 Antworten).
+
 ## Anti-Spam (MVP)
 - Django-Auth (Login Pflicht zum Bewerten). `unique_together(pupil, teacher)` verhindert
   Mehrfachabstimmung (Update statt Duplikat).

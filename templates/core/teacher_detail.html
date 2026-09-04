@@ -40,33 +40,13 @@
         <h2 class="section-title">Durchschnitt pro Kategorie</h2>
         <div class="card" style="padding: var(--space-5)">
             <div class="score-bars">
-                {% with s=teacher.score %}
+                {% for c in categories %}
                 <div class="score-bar-row">
-                    <span class="label">Interesse</span>
-                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_interest 10 100 %}%"></div></div>
-                    <span class="score-bar-value">{{ s.avg_interest|floatformat:1 }}</span>
+                    <span class="label">{{ c.label }}</span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio c.avg 10 100 %}%"></div></div>
+                    <span class="score-bar-value">{{ c.avg|floatformat:1 }}</span>
                 </div>
-                <div class="score-bar-row">
-                    <span class="label">Produktivität</span>
-                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_productivity 10 100 %}%"></div></div>
-                    <span class="score-bar-value">{{ s.avg_productivity|floatformat:1 }}</span>
-                </div>
-                <div class="score-bar-row">
-                    <span class="label">Fairness</span>
-                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_fairness 10 100 %}%"></div></div>
-                    <span class="score-bar-value">{{ s.avg_fairness|floatformat:1 }}</span>
-                </div>
-                <div class="score-bar-row">
-                    <span class="label">Atmosphäre</span>
-                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_atmosphere 10 100 %}%"></div></div>
-                    <span class="score-bar-value">{{ s.avg_atmosphere|floatformat:1 }}</span>
-                </div>
-                <div class="score-bar-row">
-                    <span class="label">Digitalisierung</span>
-                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {% widthratio s.avg_digitalization 10 100 %}%"></div></div>
-                    <span class="score-bar-value">{{ s.avg_digitalization|floatformat:1 }}</span>
-                </div>
-                {% endwith %}
+                {% endfor %}
             </div>
         </div>
     </section>
