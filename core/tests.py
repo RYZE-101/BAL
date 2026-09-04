@@ -1,5 +1,9 @@
+from io import BytesIO
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase
+from PIL import Image
 
 from . import services
 from .models import Achievement, Rating, Teacher, TeacherScore
@@ -51,6 +55,55 @@ class ScoreCalculationTests(TestCase):
         score = services.recompute_teacher_score(self.teacher.pk)
         self.assertEqual(score.rating_count, 0)
         self.assertEqual(score.avg_overall, 0)
+
+
+class AdminTeacherSaveRegressionTests(TestCase):
+    """Regression: Speichern einer bestehenden Lehrkraft mit Foto darf nicht
+    mit 500 enden (clean_photo griff auf content_type eines ImageFieldFile zu)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser('admin', '', 'pass')
+
+    def _photo_file(self):
+        buf = BytesIO()
+        Image.new('RGB', (50, 50), (0, 113, 227)).save(buf, 'PNG')
+        buf.seek(0)
+        return SimpleUploadedFile('photo.png', buf.read(), 'image/png')
+
+    def test_save_existing_teacher_with_photo_does_not_500(self):
+        teacher = Teacher.objects.create(name='Mit Foto', bio='alt')
+        teacher.photo.save('photo.png', self._photo_file(), save=True)
+
+        client = Client()
+        client.force_login(self.admin)
+        resp = client.post('/admin/core/teacher/%s/change/' % teacher.pk, {
+            'name': 'Mit Foto',
+            'slug': 'mit-foto',
+            'bio': 'geändert',
+            'is_active': 'on',
+            'ratings-TOTAL_FORMS': '0',
+            'ratings-INITIAL_FORMS': '0',
+        })
+        self.assertNotEqual(resp.status_code, 500)
+        self.assertEqual(resp.status_code, 302)
+        teacher.refresh_from_db()
+        self.assertEqual(teacher.bio, 'geändert')
+
+    def test_add_new_teacher_with_photo_ok(self):
+        client = Client()
+        client.force_login(self.admin)
+        resp = client.post('/admin/core/teacher/add/', {
+            'name': 'Neue Lehrkraft',
+            'slug': '',
+            'bio': '',
+            'is_active': 'on',
+            'photo': self._photo_file(),
+            'ratings-TOTAL_FORMS': '0',
+            'ratings-INITIAL_FORMS': '0',
+        })
+        self.assertNotEqual(resp.status_code, 500)
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Teacher.objects.filter(name='Neue Lehrkraft').exists())
 
 
 class RankingTests(TestCase):

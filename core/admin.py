@@ -28,10 +28,13 @@ class TeacherAdminForm(forms.ModelForm):
 
     def clean_photo(self):
         photo = self.cleaned_data.get('photo')
-        if photo:
-            if photo.content_type not in self.ALLOWED_TYPES:
+        uploaded = self.files.get('photo')
+        # Nur bei NEU hochgeladenen Dateien validieren; eine bestehende
+        # Datei (ImageFieldFile) beim Bearbeiten hat kein content_type.
+        if uploaded:
+            if uploaded.content_type not in self.ALLOWED_TYPES:
                 raise ValidationError('Nur JPG, PNG oder WEBP sind erlaubt.')
-            if photo.size > self.MAX_SIZE:
+            if uploaded.size > self.MAX_SIZE:
                 raise ValidationError('Das Bild darf maximal 5 MB groß sein.')
         return photo
 
