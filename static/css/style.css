@@ -163,6 +163,13 @@ img { max-width: 100%; display: block; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* iOS: Mindest-16px bei Formular-Controls verhindert automatisches
+   Zoomen beim Fokussieren (Safari zoomt bei font-size < 16px hinein). */
+input[type="text"], input[type="search"], input[type="email"],
+input[type="password"], input[type="number"], select, textarea {
+    font-size: 16px;
+}
+
 :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -793,7 +800,7 @@ body.menu-open { overflow: hidden; }
     border-radius: var(--radius-full);
     background: var(--bg-muted);
     color: var(--text);
-    font-size: var(--fs-sm);
+    font-size: 16px; /* >=16px verhindert iOS-Zoom beim Fokussieren */
     font-family: var(--font);
     width: 220px;
     transition: box-shadow var(--duration) var(--ease), background var(--duration) var(--ease);
@@ -810,7 +817,7 @@ body.menu-open { overflow: hidden; }
     border-radius: var(--radius-full);
     background: var(--bg-muted);
     color: var(--text);
-    font-size: var(--fs-sm);
+    font-size: 16px; /* >=16px verhindert iOS-Zoom */
     font-family: var(--font);
     cursor: pointer;
 }
