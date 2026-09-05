@@ -793,7 +793,7 @@ body.menu-open { overflow: hidden; }
 .teacher-controls {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--spacing-md);
     flex-wrap: wrap;
 }
 .search-field {
@@ -811,6 +811,8 @@ body.menu-open { overflow: hidden; }
 }
 .search-field input[type="search"] {
     padding: 10px 16px 10px 38px;
+    height: 40px;
+    box-sizing: border-box;
     border: none;
     border-radius: var(--radius-full);
     background: var(--bg-muted);
@@ -828,6 +830,8 @@ body.menu-open { overflow: hidden; }
 .search-field input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 #teacher-subject {
     padding: 10px 16px;
+    height: 40px;
+    box-sizing: border-box;
     border: none;
     border-radius: var(--radius-full);
     background: var(--bg-muted);
