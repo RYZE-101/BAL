@@ -33,6 +33,30 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
 - Migration 0002 überführt die alten 5 festen `q_*`-Felder verlustfrei in
   `RatingAnswer` (5 Fragen mit Keys anlegen, jede Rating-Zeile → 5 Antworten).
 
+## Regelbasiertes Achievement-System (Teil 4)
+- **`AchievementRule`** definiert, unter welcher Bedingung ein Achievement
+  automatisch vergeben wird: `condition_type` = `top_n_rank` (Top-N im
+  Gesamt-Ranking) oder `category_score_above` (Kategorie-Score über
+  Schwellenwert, verknüpft mit einer `RatingQuestion`). `duration_days` =
+  null (sofort) oder X Tage **durchgängig** erfüllt.
+- **`TeacherRankSnapshot`** speichert täglich Rang + Kategorie-Scores je
+  Lehrkraft (für zeitbasierte Regeln).
+- **Commands** (täglich per systemd-Timer):
+  - `create_daily_snapshot` → erstellt den Tages-Snapshot.
+  - `evaluate_achievement_rules` → wertet Regeln aus, vergibt/entzieht.
+- **`manually_removed`** (an `TeacherAchievement`): Ein vom Admin manuell
+  entferntes Achievement wird NICHT sofort automatisch neu vergeben, solange
+  die Bedingung weiterhin erfüllt ist. Erst wenn die Bedingung einmal NICHT
+  mehr erfüllt war (Streak gebrochen), wird das Flag zurückgesetzt und eine
+  erneute Erfüllung kann das Achievement wieder vergeben.
+- **Neue Regel anlegen:** Admin → "Regeln" → Achievement wählen →
+  Bedingungstyp wählen → Schwellenwert setzen (bei `top_n_rank` = N, bei
+  `category_score_above` = Mindest-Score + Frage wählen) → optional
+  `duration_days` → speichern. Regeln sind über `is_active` deaktivierbar.
+- **Manuelle Vergabe/Entfernung:** im Teacher-Admin über die
+  "Auszeichnungen"-Inline, oder im TeacherAchievement-Admin (Aktion
+  "Manuell entfernen" setzt `manually_removed=True`).
+
 ## Anti-Spam (MVP)
 - Django-Auth (Login Pflicht zum Bewerten). `unique_together(pupil, teacher)` verhindert
   Mehrfachabstimmung (Update statt Duplikat).

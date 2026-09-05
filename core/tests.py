@@ -1,19 +1,25 @@
 from io import BytesIO
 
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
+from django.utils import timezone
 from PIL import Image
 
 from . import services
 from .forms import RatingForm
 from .models import (
     Achievement,
+    AchievementRule,
     Rating,
     RatingAnswer,
     RatingQuestion,
     Subject,
     Teacher,
+    TeacherAchievement,
+    TeacherRankSnapshot,
     TeacherScore,
 )
 
@@ -222,6 +228,82 @@ class TeacherSearchTests(TestCase):
         self.assertEqual(res, [])
 
 
+class AchievementRuleTests(TestCase):
+    """Regelbasiertes Achievement-System (inkl. zeitbasierter Regeln)."""
+
+    def setUp(self):
+        self.t1 = Teacher.objects.create(name='T1')
+        self.t2 = Teacher.objects.create(name='T2')
+        self.ach = Achievement.objects.create(slug='top-3-rule', name='Top 3')
+        TeacherScore.objects.create(
+            teacher=self.t1, rating_count=1, avg_overall=9, rank=1
+        )
+        TeacherScore.objects.create(
+            teacher=self.t2, rating_count=1, avg_overall=5, rank=2
+        )
+
+    def _top_n_rule(self, n=2, days=None):
+        return AchievementRule.objects.create(
+            achievement=self.ach, condition_type='top_n_rank',
+            threshold_value=n, duration_days=days, is_active=True,
+        )
+
+    def test_top_n_rank_immediate_award(self):
+        self._top_n_rule(2)
+        services.evaluate_achievement_rules()
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach, is_current=True).exists())
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t2, achievement=self.ach, is_current=True).exists())
+
+    def test_no_double_award(self):
+        self._top_n_rule(2)
+        services.evaluate_achievement_rules()
+        services.evaluate_achievement_rules()
+        self.assertEqual(
+            TeacherAchievement.objects.filter(achievement=self.ach).count(), 2)
+
+    def test_manual_removal_suppressed_until_break(self):
+        self._top_n_rule(2)
+        services.evaluate_achievement_rules()
+        ta = TeacherAchievement.objects.get(teacher=self.t1, achievement=self.ach)
+        # Admin entfernt manuell
+        ta.is_current = False
+        ta.manually_removed = True
+        ta.save()
+        # Bedingung weiterhin erfüllt -> KEINE Neuvergabe
+        services.evaluate_achievement_rules()
+        ta.refresh_from_db()
+        self.assertFalse(ta.is_current)
+        # Bedingung bricht (t1 rutscht auf Rang 3)
+        TeacherScore.objects.filter(teacher=self.t1).update(rank=3)
+        services.evaluate_achievement_rules()
+        ta.refresh_from_db()
+        self.assertFalse(ta.manually_removed)  # Streak gebrochen
+        # wieder erfüllt -> Neuvergabe
+        TeacherScore.objects.filter(teacher=self.t1).update(rank=1)
+        services.evaluate_achievement_rules()
+        ta.refresh_from_db()
+        self.assertTrue(ta.is_current)
+
+    def test_duration_rule_needs_all_days(self):
+        self._top_n_rule(1, days=3)
+        today = timezone.localdate()
+        # nur 2 von 3 Tagen erfüllt -> keine Vergabe
+        for i in (1, 2):
+            TeacherRankSnapshot.objects.create(
+                teacher=self.t1, date=today - timedelta(days=i), rank=1, score=9)
+        services.evaluate_achievement_rules()
+        self.assertFalse(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach).exists())
+        # alle 3 Tage erfüllt -> Vergabe
+        TeacherRankSnapshot.objects.create(
+            teacher=self.t1, date=today, rank=1, score=9)
+        services.evaluate_achievement_rules()
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach, is_current=True).exists())
+
+
 class AdminTeacherSaveRegressionTests(TestCase):
     """Regression: Speichern einer bestehenden Lehrkraft mit Foto darf nicht
     mit 500 enden (clean_photo griff auf content_type eines ImageFieldFile zu)."""
@@ -248,6 +330,8 @@ class AdminTeacherSaveRegressionTests(TestCase):
             'is_active': 'on',
             'ratings-TOTAL_FORMS': '0',
             'ratings-INITIAL_FORMS': '0',
+            'achievements-TOTAL_FORMS': '0',
+            'achievements-INITIAL_FORMS': '0',
         })
         self.assertNotEqual(resp.status_code, 500)
         self.assertEqual(resp.status_code, 302)
@@ -265,6 +349,8 @@ class AdminTeacherSaveRegressionTests(TestCase):
             'photo': self._photo_file(),
             'ratings-TOTAL_FORMS': '0',
             'ratings-INITIAL_FORMS': '0',
+            'achievements-TOTAL_FORMS': '0',
+            'achievements-INITIAL_FORMS': '0',
         })
         self.assertNotEqual(resp.status_code, 500)
         self.assertEqual(resp.status_code, 302)
