@@ -217,8 +217,10 @@ a:hover { text-decoration: underline; }
 .brand:hover { text-decoration: none; }
 
 .nav-links {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-5);
     font-size: var(--fs-sm);
 }
