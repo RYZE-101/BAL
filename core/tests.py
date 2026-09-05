@@ -304,6 +304,59 @@ class AchievementRuleTests(TestCase):
             teacher=self.t1, achievement=self.ach, is_current=True).exists())
 
 
+class RatingDeleteRecomputeTests(TestCase):
+    """Löschen eines Ratings kaskadiert RatingAnswers und berechnet den Score neu."""
+
+    def test_delete_rating_cascades_and_recomputes_score(self):
+        teacher = Teacher.objects.create(name='T')
+        pupil = User.objects.create_user('p', password='x')
+        RatingHelpers.rate(teacher, pupil, {
+            'interest': 10, 'productivity': 10, 'fairness': 10,
+            'atmosphere': 10, 'digitalization': 10})
+        services.recompute_teacher_score(teacher.pk)
+        score = TeacherScore.objects.get(teacher=teacher)
+        self.assertEqual(score.rating_count, 1)
+        self.assertEqual(score.avg_overall, 10.0)
+        self.assertEqual(RatingAnswer.objects.count(), 5)
+
+        Rating.objects.all().delete()  # auch Bulk (Admin-Bulk)
+        self.assertEqual(RatingAnswer.objects.count(), 0)  # Kaskade
+        score.refresh_from_db()  # post_delete-Signal hat neu berechnet
+        self.assertEqual(score.rating_count, 0)
+        self.assertEqual(score.avg_overall, 0)
+
+
+class OriginalQuestionManageTests(TestCase):
+    """Die 5 ursprünglichen Fragen werden wie jede andere Frage behandelt."""
+
+    def test_deactivate_reactivate_original_question(self):
+        q = RatingQuestion.objects.get(key='interest')
+        self.assertTrue(q.is_active)
+        # deaktivieren -> nicht im Formular
+        q.is_active = False
+        q.save()
+        texts = [f.label for f in RatingForm(pupil=None, teacher=None).fields.values()]
+        self.assertNotIn('Wie interessant ist der Unterricht?', texts)
+        # wieder aktivieren -> erscheint wieder
+        q.is_active = True
+        q.save()
+        texts = [f.label for f in RatingForm(pupil=None, teacher=None).fields.values()]
+        self.assertIn('Wie interessant ist der Unterricht?', texts)
+
+    def test_overall_score_is_dynamic_with_question_count(self):
+        # Gesamtscore hängt nicht an 'es gibt genau 5 Fragen' fest
+        teacher = Teacher.objects.create(name='Dyn')
+        pupil = User.objects.create_user('dynp', password='x')
+        # Nur 2 aktive Fragen -> Antworten entsprechend
+        RatingQuestion.objects.exclude(key__in=['interest', 'productivity']).update(is_active=False)
+        rating = Rating.objects.create(pupil=pupil, teacher=teacher)
+        RatingAnswer.objects.create(rating=rating, question=RatingQuestion.objects.get(key='interest'), value=10)
+        RatingAnswer.objects.create(rating=rating, question=RatingQuestion.objects.get(key='productivity'), value=4)
+        self.assertEqual(rating.overall, 7.0)  # (10+4)/2, dynamisch
+        score = services.recompute_teacher_score(teacher.pk)
+        self.assertEqual(score.avg_overall, 7.0)
+
+
 class AdminTeacherSaveRegressionTests(TestCase):
     """Regression: Speichern einer bestehenden Lehrkraft mit Foto darf nicht
     mit 500 enden (clean_photo griff auf content_type eines ImageFieldFile zu)."""
