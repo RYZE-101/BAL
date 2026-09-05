@@ -24,7 +24,7 @@
                 <a href="{% url 'teacher_detail' score.teacher.slug %}" style="color:inherit">
                     <div class="podium-card">
                         <div class="podium-photo-wrap">
-                            {% include 'core/_teacher_photo.html' with class='podium-photo' %}
+                            {% include 'core/_teacher_photo.html' with teacher=score.teacher class='podium-photo' %}
                         </div>
                         <div class="podium-rank">{{ place }}.</div>
                         <div class="podium-name">{{ score.teacher.name }}</div>
