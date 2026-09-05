@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from . import services
 from .models import (
     Achievement,
+    AchievementRule,
     Rating,
     RatingAnswer,
     RatingQuestion,
@@ -52,6 +53,15 @@ class RatingInline(admin.TabularInline):
     extra = 0
 
 
+class TeacherAchievementInline(admin.TabularInline):
+    """Manuelle Zuweisung/Entfernung von Achievements je Lehrkraft."""
+
+    model = TeacherAchievement
+    extra = 0
+    verbose_name = 'Auszeichnung'
+    verbose_name_plural = 'Auszeichnungen'
+
+
 @admin.register(Teacher)
 class TeacherAdmin(admin.ModelAdmin):
     form = TeacherAdminForm
@@ -65,7 +75,7 @@ class TeacherAdmin(admin.ModelAdmin):
         (None, {'fields': ('name', 'slug', 'subjects', 'is_active')}),
         ('Profil & Foto', {'fields': ('photo', 'photo_preview', 'bio')}),
     )
-    inlines = [RatingInline]
+    inlines = [RatingInline, TeacherAchievementInline]
 
     @admin.display(description='Foto')
     def photo_preview(self, obj):
@@ -160,8 +170,42 @@ class AchievementAdmin(admin.ModelAdmin):
 
 @admin.register(TeacherAchievement)
 class TeacherAchievementAdmin(admin.ModelAdmin):
-    list_display = ('teacher', 'achievement', 'is_current', 'awarded_at')
-    list_filter = ('is_current', 'achievement')
+    list_display = ('teacher', 'achievement', 'is_current', 'manually_removed', 'awarded_at')
+    list_filter = ('is_current', 'achievement', 'manually_removed')
+    actions = ['mark_manually_removed']
+
+    @admin.action(description='Manuell entfernen (unterdrückt Auto-Neuvergabe)')
+    def mark_manually_removed(self, request, queryset):
+        updated = queryset.update(is_current=False, manually_removed=True)
+        self.message_user(request, f'{updated} Auszeichnung(en) manuell entfernt.')
+
+
+@admin.register(AchievementRule)
+class AchievementRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        'achievement', 'condition_type', 'threshold_value', 'question',
+        'duration_days', 'is_active',
+    )
+    list_editable = ('is_active',)
+    list_filter = ('condition_type', 'is_active')
+    fieldsets = (
+        (None, {
+            'fields': ('achievement', 'condition_type', 'is_active'),
+        }),
+        ('Bedingung', {
+            'fields': (
+                'threshold_value',
+                'question',
+                'duration_days',
+            ),
+            'description': (
+                'TOP_N_RANK: threshold_value = N (z.B. 3 für Top-3). '
+                'CATEGORY_SCORE_ABOVE: threshold_value = Mindest-Score (z.B. 8.5), '
+                'question = die zu prüfende Bewertungsfrage. '
+                'duration_days: leer = sofort bei Erfüllung, sonst Tage durchgängig erfüllt.'
+            ),
+        }),
+    )
 
 
 class UserRatingInline(admin.TabularInline):
