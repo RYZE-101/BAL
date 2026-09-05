@@ -202,11 +202,17 @@ a:hover { text-decoration: underline; }
     background: color-mix(in srgb, var(--bg) 92%, transparent);
 }
 
-.nav {
+.navbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 52px;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .brand {

@@ -19,8 +19,10 @@
 </head>
 <body>
     <header class="site-header">
-        <nav class="nav container">
-            <a class="brand" href="{% url 'home' %}">BAL</a>
+        <nav class="navbar container">
+            <div class="nav-logo">
+                <a class="brand" href="{% url 'home' %}">BAL</a>
+            </div>
             <div class="nav-links">
                 <a href="{% url 'teacher_list' %}">Lehrkräfte</a>
                 <a href="{% url 'ranking' %}">Ranking</a>
