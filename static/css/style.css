@@ -111,6 +111,7 @@
     /* --- Container --- */
     --container-max: 1080px;
     --container-narrow: 720px;
+    --container-padding: clamp(20px, 5vw, 64px);
 }
 
 /* ---------- Dark Mode ---------- */
@@ -172,14 +173,14 @@ a:hover { text-decoration: underline; }
     width: 100%;
     max-width: var(--container-max);
     margin: 0 auto;
-    padding: 0 var(--space-5);
+    padding: 0 var(--container-padding);
 }
 
 .container-narrow {
     max-width: var(--container-narrow);
     margin: 0 auto;
     width: 100%;
-    padding: 0 var(--space-5);
+    padding: 0 var(--container-padding);
 }
 
 /* ---------- Header / Nav (Apple-typisch: transluzent + blur) ---------- */
@@ -347,7 +348,7 @@ body.menu-open { overflow: hidden; }
 /* ---------- Hero ---------- */
 .hero {
     text-align: center;
-    padding: var(--spacing-5xl) var(--space-5) var(--spacing-3xl);
+    padding: var(--spacing-5xl) var(--container-padding) var(--spacing-3xl);
 }
 .hero h1 {
     font-size: var(--font-size-hero);
@@ -896,7 +897,7 @@ body.menu-open { overflow: hidden; }
     .ranking-podium { flex-wrap: wrap; }
     .podium-place { flex-basis: 100%; }
     .podium-1 .podium-card, .podium-2 .podium-card, .podium-3 .podium-card {
-        height: auto;
+        min-height: auto;
         border-radius: var(--radius-lg);
         animation: none;
         opacity: 1;
