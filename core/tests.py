@@ -76,8 +76,10 @@ class ScoreCalculationTests(TestCase):
         )
         score = services.recompute_teacher_score(self.teacher.pk)
         self.assertEqual(score.rating_count, 2)
-        self.assertEqual(score.avg_interest, 6.0)
-        self.assertEqual(score.avg_productivity, 8.0)
+        q_interest = RatingQuestion.objects.get(key='interest').pk
+        q_productivity = RatingQuestion.objects.get(key='productivity').pk
+        self.assertEqual(services.category_score(self.teacher.pk, q_interest), 6.0)
+        self.assertEqual(services.category_score(self.teacher.pk, q_productivity), 8.0)
         self.assertAlmostEqual(score.avg_overall, (4 + 6 + 8 + 10 + 5 * 6) / 10, places=2)
 
     def test_empty_teacher_scores_zero(self):
@@ -160,7 +162,7 @@ class DynamicQuestionsTests(TestCase):
         # Historische Antwort bleibt erhalten und zählt in den Score
         self.assertTrue(RatingAnswer.objects.filter(question=q).exists())
         score = services.recompute_teacher_score(self.teacher.pk)
-        self.assertEqual(score.avg_fairness, 5.0)
+        self.assertEqual(services.category_score(self.teacher.pk, q.pk), 5.0)
 
     def test_form_save_creates_answers(self):
         questions = list(RatingQuestion.objects.filter(is_active=True).order_by('order'))
@@ -235,6 +237,7 @@ class AchievementRuleTests(TestCase):
         self.t1 = Teacher.objects.create(name='T1')
         self.t2 = Teacher.objects.create(name='T2')
         self.ach = Achievement.objects.create(slug='top-3-rule', name='Top 3')
+        self.pupil = User.objects.create_user('rp', password='x')
         TeacherScore.objects.create(
             teacher=self.t1, rating_count=1, avg_overall=9, rank=1
         )
@@ -302,6 +305,39 @@ class AchievementRuleTests(TestCase):
         services.evaluate_achievement_rules()
         self.assertTrue(TeacherAchievement.objects.filter(
             teacher=self.t1, achievement=self.ach, is_current=True).exists())
+
+    def test_category_score_rule_above_threshold(self):
+        """Backward-Compat: Regel auf einer der 5 Originalfragen funktioniert
+        dynamisch (ohne avg_*-Spalten)."""
+        q = RatingQuestion.objects.get(key='fairness')
+        AchievementRule.objects.create(
+            achievement=self.ach, condition_type='category_score_above',
+            threshold_value=8.5, question=q, duration_days=None, is_active=True)
+        r = Rating.objects.create(pupil=self.pupil, teacher=self.t1)
+        RatingAnswer.objects.create(rating=r, question=q, value=9)
+        services.recompute_all_scores()
+        services.update_ranking()
+        services.evaluate_achievement_rules()
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach, is_current=True).exists())
+
+    def test_sixth_question_rule_works(self):
+        """Eine neue 6. Frage ist als CATEGORY_SCORE_ABOVE-Bedingung nutzbar."""
+        q6 = RatingQuestion.objects.create(
+            text='Wie modern ist das Klassenzimmer?', key='modernity',
+            order=6, is_active=True)
+        AchievementRule.objects.create(
+            achievement=self.ach, condition_type='category_score_above',
+            threshold_value=7, question=q6, duration_days=None, is_active=True)
+        r = Rating.objects.create(pupil=self.pupil, teacher=self.t1)
+        RatingAnswer.objects.create(rating=r, question=q6, value=8)
+        services.recompute_all_scores()
+        services.update_ranking()
+        services.evaluate_achievement_rules()
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach, is_current=True).exists())
+        # und der Kategorie-Score ist dynamisch abrufbar
+        self.assertEqual(services.category_score(self.t1.pk, q6.pk), 8.0)
 
 
 class RatingDeleteRecomputeTests(TestCase):

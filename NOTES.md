@@ -26,12 +26,19 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
   Durchschnitt **aller** `RatingAnswer`-Werte, unabhängig davon, ob die Frage
   aktuell aktiv ist. So bleiben historische Antworten in der Wertung erhalten
   und eine Deaktivierung ändert vergangene Scores nicht rückwirkend.
-- **Kategorie-Scores** (`avg_interest` … `avg_digitalization`) werden nur für
-  Fragen mit klassischem `key` berechnet (für Ranking-Achievements wie
-  "Fairste"/"Interessanteste"). Neue Fragen ohne Key tragen nur zu `avg_overall` bei.
+- **Kategorie-Scores sind vollständig dynamisch:** Es gibt KEINE fest
+  gespeicherten `avg_*`-Spalten mehr. `services.category_score(teacher_id,
+  question_id)` berechnet den Durchschnitt je Frage on-the-fly aus den
+  `RatingAnswer`s; Profil-Kategorien und Achievement-Regeln
+  (`CATEGORY_SCORE_ABOVE`) beziehen sich auf `question_id`, nicht auf
+  hartkodierte Keys. Eine neu hinzugefügte Frage erscheint daher automatisch
+  als Profil-Kategorie und ist sofort als Regel-Bedingung wählbar.
 - Profilseite zeigt die Kategorien **dynamisch** (alle aktiven Fragen nach `order`).
 - Migration 0002 überführt die alten 5 festen `q_*`-Felder verlustfrei in
   `RatingAnswer` (5 Fragen mit Keys anlegen, jede Rating-Zeile → 5 Antworten).
+- Migration 0004 entfernt die früheren `avg_*`-Spalten aus `TeacherScore`
+  (Score-Berechnung ist nun vollständig dynamisch; nichts geht verloren, da
+  alles aus `RatingAnswer` ableitbar ist).
 
 ## Regelbasiertes Achievement-System (Teil 4)
 - **`AchievementRule`** definiert, unter welcher Bedingung ein Achievement
