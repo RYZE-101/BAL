@@ -21,3 +21,4 @@ staticfiles/
 deploy_key
 deploy_key.pub
 *.pem
+db.sqlite3.backup*
