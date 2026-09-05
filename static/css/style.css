@@ -475,15 +475,18 @@ body.menu-open { overflow: hidden; }
 /* Krone über Platz 1, leicht über den Kartenrand hinausragend */
 .podium-1 { position: relative; }
 .crown {
-    width: 48px;
-    height: 44px;
-    color: var(--gold);
-    margin: 0 auto -20px;
+    width: clamp(48px, 30%, 84px);
+    margin: 0 auto -14px;
     position: relative;
     z-index: 1;
-    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.18));
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
 }
-.crown svg { width: 100%; height: 100%; display: block; }
+.crown img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1346 / 743; /* reserviert Platz, verhindert Layout-Shift */
+}
 .podium-place .podium-card {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: var(--space-5);
