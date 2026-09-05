@@ -151,11 +151,6 @@ class TeacherScore(models.Model):
 
     teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='score')
     rating_count = models.PositiveIntegerField(default=0)
-    avg_interest = models.FloatField(default=0)
-    avg_productivity = models.FloatField(default=0)
-    avg_fairness = models.FloatField(default=0)
-    avg_atmosphere = models.FloatField(default=0)
-    avg_digitalization = models.FloatField(default=0)
     avg_overall = models.FloatField(default=0)
     rank = models.PositiveIntegerField(null=True, blank=True)
     previous_rank = models.PositiveIntegerField(null=True, blank=True)
