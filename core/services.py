@@ -174,3 +174,144 @@ def refresh_all():
     recompute_all_scores()
     update_ranking()
     update_achievements()
+
+
+# ---------------------------------------------------------------
+# Regelbasiertes Achievement-System
+# ---------------------------------------------------------------
+from datetime import timedelta
+
+from django.db import transaction
+from django.utils import timezone
+
+from .models import (
+    AchievementRule,
+    TeacherAchievement,
+    TeacherRankSnapshot,
+    TeacherScore,
+)
+
+
+def _current_rank_by_teacher():
+    return {
+        s.teacher_id: s.rank
+        for s in TeacherScore.objects.filter(rating_count__gt=0)
+    }
+
+
+def _category_scores_by_teacher():
+    """{teacher_id: {key: avg}} aus den klassischen avg_*-Spalten."""
+    out = {}
+    keys = ('interest', 'productivity', 'fairness', 'atmosphere', 'digitalization')
+    for s in TeacherScore.objects.all():
+        d = {}
+        for k in keys:
+            v = getattr(s, f'avg_{k}', None)
+            if v:
+                d[k] = v
+        out[s.teacher_id] = d
+    return out
+
+
+def _snapshot_meets(rule, snap):
+    """Prüft, ob eine Regel in einem einzelnen Snapshot erfüllt ist."""
+    if rule.condition_type == AchievementRule.ConditionType.TOP_N_RANK:
+        return snap.rank is not None and snap.rank <= rule.threshold_value
+    if rule.condition_type == AchievementRule.ConditionType.CATEGORY_SCORE_ABOVE:
+        if rule.question_id is None or not rule.question.key:
+            return False
+        return snap.category_scores.get(rule.question.key, 0) >= rule.threshold_value
+    return False
+
+
+def _current_satisfying_ids(rule, rank_by_teacher, cat_by_teacher):
+    """Lehrkraft-IDs, die die Regel AKTUELL erfüllen (ohne Zeitfenster)."""
+    ids = set()
+    for tid in rank_by_teacher.keys():
+        if rule.condition_type == AchievementRule.ConditionType.TOP_N_RANK:
+            rank = rank_by_teacher[tid]
+            if rank is not None and rank <= rule.threshold_value:
+                ids.add(tid)
+        elif rule.condition_type == AchievementRule.ConditionType.CATEGORY_SCORE_ABOVE:
+            if rule.question_id is None or not rule.question.key:
+                continue
+            val = cat_by_teacher.get(tid, {}).get(rule.question.key)
+            if val is not None and val >= rule.threshold_value:
+                ids.add(tid)
+    return ids
+
+
+def _duration_satisfying_ids(rule):
+    """Lehrkraft-IDs, die die Regel in ALLEN Snapshots der letzten N Tage erfüllen."""
+    today = timezone.localdate()
+    start = today - timedelta(days=rule.duration_days - 1)
+    snaps = list(
+        TeacherRankSnapshot.objects.filter(date__gte=start, date__lte=today)
+        .order_by('teacher', 'date')
+    )
+    from collections import defaultdict
+    by_teacher = defaultdict(list)
+    for s in snaps:
+        by_teacher[s.teacher_id].append(s)
+    satisfying = set()
+    for tid, teacher_snaps in by_teacher.items():
+        if len(teacher_snaps) < rule.duration_days:
+            continue
+        if all(_snapshot_meets(rule, s) for s in teacher_snaps):
+            satisfying.add(tid)
+    return satisfying
+
+
+@transaction.atomic
+def evaluate_achievement_rules():
+    """Bewertet alle aktiven Regeln und vergibt/entzieht Achievements.
+
+    - null-duration: sofort bei aktueller Erfüllung.
+    - duration_days: nur bei durchgängiger Erfüllung in den letzten N Tagen.
+    - Keine Doppelvergabe (is_current=True vorhanden).
+    - manually_removed: unterdrückt Neuvergabe, bis die Bedingung einmal NICHT
+      mehr erfüllt war (dann wird das Flag zurückgesetzt).
+    """
+    today = timezone.localdate()
+    rank_by_teacher = _current_rank_by_teacher()
+    cat_by_teacher = _category_scores_by_teacher()
+
+    for rule in AchievementRule.objects.filter(is_active=True):
+        if rule.duration_days:
+            satisfying = _duration_satisfying_ids(rule)
+        else:
+            satisfying = _current_satisfying_ids(rule, rank_by_teacher, cat_by_teacher)
+
+        existing = TeacherAchievement.objects.filter(achievement=rule.achievement)
+        existing_by_teacher = {ta.teacher_id: ta for ta in existing}
+
+        # Entziehen / manually_removed zurücksetzen bei Nichterfüllung
+        for ta in existing:
+            if ta.teacher_id in satisfying:
+                if ta.manually_removed:
+                    continue  # manuell entfernt -> nicht neu vergeben
+                if not ta.is_current:
+                    ta.is_current = True
+                    ta.save()
+            else:
+                changed = False
+                if ta.is_current:
+                    ta.is_current = False
+                    changed = True
+                if ta.manually_removed:
+                    ta.manually_removed = False  # Streak gebrochen
+                    changed = True
+                if changed:
+                    ta.save()
+
+        # Neu vergeben
+        for tid in satisfying:
+            if tid in existing_by_teacher:
+                continue
+            TeacherAchievement.objects.create(
+                teacher_id=tid,
+                achievement=rule.achievement,
+                is_current=True,
+                manually_removed=False,
+            )
+    return today

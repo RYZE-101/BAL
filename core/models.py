@@ -190,9 +190,65 @@ class TeacherAchievement(models.Model):
     achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE, related_name='holders')
     awarded_at = models.DateTimeField(auto_now_add=True)
     is_current = models.BooleanField(default=True)
+    # Wird beim manuellen Entfernen durch den Admin gesetzt. Unterdrückt die
+    # automatische Neuvergabe, bis die Bedingung erneut erfüllt wird
+    # (d.h. zuerst nicht mehr, dann wieder erfüllt).
+    manually_removed = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('teacher', 'achievement')
 
     def __str__(self):
         return f'{self.teacher} – {self.achievement}'
+
+
+class AchievementRule(models.Model):
+    """Regelbasierte automatische Vergabe eines Achievements."""
+
+    class ConditionType(models.TextChoices):
+        TOP_N_RANK = 'top_n_rank', 'Top-N im Gesamt-Ranking'
+        CATEGORY_SCORE_ABOVE = 'category_score_above', 'Kategorie-Score über Schwellenwert'
+
+    achievement = models.ForeignKey(
+        Achievement, on_delete=models.CASCADE, related_name='rules'
+    )
+    condition_type = models.CharField(
+        max_length=30, choices=ConditionType.choices
+    )
+    # Bei TOP_N_RANK: N (z.B. 3). Bei CATEGORY_SCORE_ABOVE: Mindest-Score (z.B. 8.5).
+    threshold_value = models.FloatField(default=0)
+    # Nur bei CATEGORY_SCORE_ABOVE relevant: auf welche Frage sich der Score bezieht.
+    question = models.ForeignKey(
+        RatingQuestion, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='rules',
+    )
+    # null = sofort bei Erfüllung; sonst Anzahl Tage durchgängig erfüllt.
+    duration_days = models.PositiveIntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f'{self.achievement} ({self.get_condition_type_display()})'
+
+
+class TeacherRankSnapshot(models.Model):
+    """Täglicher Snapshot (Rang + Score + Kategorie-Scores) je Lehrkraft.
+
+    Dient der Auswertung zeitbasierter Regeln ('durchgängig erfüllt über X
+    Tage'). Wird vom Management-Command create_daily_snapshot erzeugt.
+    """
+
+    teacher = models.ForeignKey(
+        Teacher, on_delete=models.CASCADE, related_name='snapshots'
+    )
+    date = models.DateField()
+    rank = models.PositiveIntegerField(null=True, blank=True)
+    score = models.FloatField(default=0)
+    # {question_key: avg} für die Kategorie-Scores des Tages
+    category_scores = models.JSONField(default=dict)
+
+    class Meta:
+        unique_together = ('teacher', 'date')
+        ordering = ['teacher', '-date']
+
+    def __str__(self):
+        return f'{self.teacher} @ {self.date}: Rang {self.rank}'
