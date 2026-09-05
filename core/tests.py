@@ -361,6 +361,27 @@ class RatingDeleteRecomputeTests(TestCase):
         self.assertEqual(score.rating_count, 0)
         self.assertEqual(score.avg_overall, 0)
 
+    def test_delete_teacher_with_related_data_no_fk_error(self):
+        """Löschen einer Lehrkraft mit Ratings/Achievements/Snapshots darf
+        keinen FK-Fehler werfen (Signal erzeugt keine verwaiste TeacherScore)."""
+        teacher = Teacher.objects.create(name='Del T')
+        pupil = User.objects.create_user('dtp2', password='x')
+        RatingHelpers.rate(teacher, pupil, {
+            'interest': 5, 'productivity': 5, 'fairness': 5,
+            'atmosphere': 5, 'digitalization': 5})
+        services.recompute_teacher_score(teacher.pk)
+        TeacherRankSnapshot.objects.create(
+            teacher=teacher, date=timezone.localdate(), rank=1, score=5)
+        ach = Achievement.objects.create(slug='dt2-ach', name='DT2')
+        TeacherAchievement.objects.create(teacher=teacher, achievement=ach)
+
+        teacher.delete()  # darf nicht werfen
+        self.assertFalse(Teacher.objects.filter(pk=teacher.pk).exists())
+        self.assertEqual(TeacherRankSnapshot.objects.filter(teacher_id=teacher.pk).count(), 0)
+        self.assertEqual(TeacherAchievement.objects.filter(teacher_id=teacher.pk).count(), 0)
+        self.assertEqual(TeacherScore.objects.filter(teacher_id=teacher.pk).count(), 0)
+        self.assertEqual(Rating.objects.filter(teacher_id=teacher.pk).count(), 0)
+
 
 class OriginalQuestionManageTests(TestCase):
     """Die 5 ursprünglichen Fragen werden wie jede andere Frage behandelt."""
