@@ -12,6 +12,7 @@ from .models import (
     Rating,
     RatingAnswer,
     RatingQuestion,
+    Subject,
     Teacher,
     TeacherScore,
 )
@@ -182,6 +183,43 @@ class AchievementTests(TestCase):
 
         holder = t1.achievements.get(achievement__slug='top-1')
         self.assertTrue(holder.is_current)
+
+
+class TeacherSearchTests(TestCase):
+    """Suche mit Fuzzy-Matching und Fächer-Filter."""
+
+    def setUp(self):
+        self.meitner = Teacher.objects.create(name='Meitner')
+        self.math = Subject.objects.create(name='Mathematik')
+        self.meitner.subjects.add(self.math)
+        self.other = Teacher.objects.create(name='Becker')
+
+    def _filter(self, **params):
+        from django.test import RequestFactory
+        from core.views import _filter_teachers
+        rf = RequestFactory()
+        return _filter_teachers(rf.get('/lehrkraefte/', params))
+
+    def test_fuzzy_typo_finds_teacher(self):
+        # "Meidner"/"Meithner" müssen "Meitner" trotz Tippfehler finden
+        self.assertIn(self.meitner, self._filter(q='Meidner'))
+        self.assertIn(self.meitner, self._filter(q='Meithner'))
+
+    def test_case_insensitive(self):
+        self.assertIn(self.meitner, self._filter(q='meitner'))
+
+    def test_substring_search(self):
+        self.assertIn(self.meitner, self._filter(q='Meit'))
+
+    def test_subject_filter(self):
+        res = self._filter(subject=str(self.math.pk))
+        self.assertIn(self.meitner, res)
+        self.assertNotIn(self.other, res)
+
+    def test_search_and_subject_combined(self):
+        res = self._filter(q='Becker', subject=str(self.math.pk))
+        # UND-Verknüpfung: Becker lehrt Mathe nicht -> kein Treffer
+        self.assertEqual(res, [])
 
 
 class AdminTeacherSaveRegressionTests(TestCase):

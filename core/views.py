@@ -11,6 +11,7 @@ from .models import (
     Rating,
     RatingAnswer,
     RatingQuestion,
+    Subject,
     Teacher,
     TeacherAchievement,
     TeacherScore,
@@ -35,13 +36,57 @@ def home(request):
 
 
 def teacher_list(request):
-    teachers = (
+    teachers = _filter_teachers(request)
+    subjects = Subject.objects.order_by('name')
+    selected = request.GET.getlist('subject')
+    return render(request, 'core/teacher_list.html', {
+        'teachers': teachers,
+        'subjects': subjects,
+        'selected_subjects': [str(x) for x in selected],
+    })
+
+
+def teacher_list_partial(request):
+    """HTML-Fragment für die Live-Suche/Filter der Lehrkräfte-Liste."""
+    teachers = _filter_teachers(request)
+    return render(request, 'core/_teacher_grid.html', {'teachers': teachers})
+
+
+def _filter_teachers(request):
+    """Filtert Lehrkräfte nach Textsuche (Fuzzy) + Fächer (UND-Verknüpfung).
+
+    - Groß-/Kleinschreibung: über icontains / lower-Name.
+    - Tippfehler: rapidfuzz-Score (Schwellenwert > 70), nach Relevanz sortiert
+      (exakte Substring-Treffer zuerst, dann nach Ähnlichkeit).
+    - Fächer: Lehrkraft muss (mindestens) eines der gewählten Fächer unterrichten.
+    """
+    from rapidfuzz import fuzz
+
+    q = request.GET.get('q', '').strip()
+    subject_ids = [sid for sid in request.GET.getlist('subject') if sid]
+
+    qs = (
         Teacher.objects.filter(is_active=True)
         .select_related('score')
         .prefetch_related('subjects')
-        .order_by('name')
     )
-    return render(request, 'core/teacher_list.html', {'teachers': teachers})
+    if subject_ids:
+        qs = qs.filter(subjects__id__in=subject_ids).distinct()
+
+    if not q:
+        return list(qs.order_by('name'))
+
+    ql = q.lower()
+    results = []
+    for t in qs:
+        name = t.name.lower()
+        score = fuzz.ratio(ql, name)
+        if ql in name or score > 70:
+            t._exact = ql in name
+            t._fuzzy = score
+            results.append(t)
+    results.sort(key=lambda t: (not t._exact, -t._fuzzy))
+    return results
 
 
 def teacher_detail(request, slug):

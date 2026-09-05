@@ -1,0 +1,31 @@
+{% comment %}
+Lehrkräfte-Grid (wird für Initial-Load und Live-Suche wiederverwendet).
+Kontext: teachers
+{% endcomment %}
+<div class="teacher-grid">
+    {% for teacher in teachers %}
+        <a class="card teacher-card" href="{% url 'teacher_detail' teacher.slug %}">
+            {% include 'core/_teacher_photo.html' with teacher=teacher class='teacher-photo' %}
+            <div class="teacher-card-body">
+                <h3>{{ teacher.name }}</h3>
+                <div class="subjects">
+                    {% for s in teacher.subjects.all %}{{ s.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                </div>
+                {% if teacher.score.rating_count > 0 %}
+                    <div class="score-line">★ {{ teacher.score.avg_overall|floatformat:1 }}
+                        <span class="rank-delta {% if teacher.score.rank %}new{% endif %}">Platz {{ teacher.score.rank }}</span>
+                    </div>
+                {% else %}
+                    <div class="score-line">Noch keine Bewertungen</div>
+                {% endif %}
+            </div>
+        </a>
+    {% empty %}
+        <div class="empty-state grid-span">
+            <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <p>Keine Lehrkräfte gefunden.</p>
+        </div>
+    {% endfor %}
+</div>

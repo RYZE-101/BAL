@@ -109,6 +109,35 @@ document.addEventListener('input', function (e) {
     }
 });
 
+// Live-Suche/Fächer-Filter auf der Lehrkräfte-Übersicht (Debounce 300ms)
+(function () {
+    var input = document.getElementById('teacher-q');
+    var subject = document.getElementById('teacher-subject');
+    var container = document.getElementById('teacher-grid-container');
+    if (!input || !container) return;
+    var url = container.getAttribute('data-url');
+    if (!url) return;
+    var timer = null;
+
+    function refresh() {
+        var params = new URLSearchParams();
+        if (input.value.trim()) params.set('q', input.value.trim());
+        if (subject && subject.value) params.set('subject', subject.value);
+        fetch(url + '?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.ok ? r.text() : null; })
+            .then(function (html) { if (html) container.innerHTML = html; })
+            .catch(function () {});
+    }
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(refresh, 300);
+    });
+    if (subject) {
+        subject.addEventListener('change', refresh);
+    }
+})();
+
 // Ranking-Polling (alle 10s aktualisieren ohne Reload)
 (function () {
     var list = document.getElementById('ranking-list');

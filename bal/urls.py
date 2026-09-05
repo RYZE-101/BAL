@@ -9,6 +9,7 @@ urlpatterns = [
     path('accounts/signup/', views.signup, name='signup'),
     path('', views.home, name='home'),
     path('lehrkraefte/', views.teacher_list, name='teacher_list'),
+    path('lehrkraefte/_partial/', views.teacher_list_partial, name='teacher_list_partial'),
     path('lehrkraefte/<slug:slug>/', views.teacher_detail, name='teacher_detail'),
     path('lehrkraefte/<slug:slug>/bewerten/', views.rate_teacher, name='rate_teacher'),
     path('ranking/', views.ranking, name='ranking'),

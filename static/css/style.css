@@ -751,6 +751,58 @@ body.menu-open { overflow: hidden; }
 }
 .title-xl { font-size: var(--fs-xl); }
 
+/* Lehrkräfte-Suche + Fächer-Filter */
+.teacher-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+.search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-field .search-icon {
+    position: absolute;
+    left: 14px;
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+.search-field input[type="search"] {
+    padding: 10px 16px 10px 38px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--bg-muted);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    font-family: var(--font);
+    width: 220px;
+    transition: box-shadow var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+.search-field input[type="search"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    background: var(--bg-elevated);
+}
+.search-field input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+#teacher-subject {
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--bg-muted);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    font-family: var(--font);
+    cursor: pointer;
+}
+#teacher-subject:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
 /* ---------- Footer ---------- */
 .site-footer {
     margin-top: var(--space-8);
@@ -892,6 +944,15 @@ body.menu-open { overflow: hidden; }
         padding: var(--space-2) 0 var(--space-3);
         font-weight: 500;
     }
+
+    .section-head {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-4);
+    }
+    .teacher-controls { width: 100%; }
+    .search-field { flex: 1; }
+    .search-field input[type="search"] { width: 100%; }
 
     .profile-header { flex-direction: column; text-align: center; }
     .profile-header .subjects { justify-content: center; }
