@@ -792,6 +792,16 @@ body.menu-open { overflow: hidden; }
 }
 .title-xl { font-size: var(--fs-xl); }
 
+/* Zurück-Link auf Detailseiten (konsistent) */
+.back-link {
+    display: inline-block;
+    color: var(--accent);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    margin-bottom: var(--spacing-md);
+}
+.back-link:hover { text-decoration: underline; }
+
 /* Lehrkräfte-Suche + Fächer-Filter */
 .teacher-controls {
     display: flex;

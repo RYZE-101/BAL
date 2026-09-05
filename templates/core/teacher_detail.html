@@ -2,6 +2,7 @@
 {% block title %}{{ teacher.name }} – BAL{% endblock %}
 {% block content %}
 <div class="container">
+    <a class="back-link" href="{% url 'teacher_list' %}">← Alle Lehrkräfte</a>
     <div class="profile-header">
         {% include 'core/_teacher_photo.html' with class='photo' %}
         <div>

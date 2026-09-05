@@ -2,6 +2,7 @@
 {% block title %}{{ teacher.name }} bewerten – BAL{% endblock %}
 {% block content %}
 <div class="container-narrow section">
+    <a class="back-link" href="{% url 'teacher_detail' teacher.slug %}">← {{ teacher.name }}</a>
     <h1 class="section-title">{{ teacher.name }} bewerten</h1>
     <p style="color: var(--text-secondary)">Bewerte auf einer Skala von 1 (sehr schlecht) bis 10 (hervorragend).</p>
 

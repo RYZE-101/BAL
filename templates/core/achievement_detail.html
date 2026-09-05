@@ -2,7 +2,7 @@
 {% block title %}{{ achievement.name }} – BAL{% endblock %}
 {% block content %}
 <div class="container section">
-    <a href="{% url 'achievements' %}">← Alle Auszeichnungen</a>
+    <a class="back-link" href="{% url 'achievements' %}">← Alle Auszeichnungen</a>
     <h1 class="section-title" style="margin-top: var(--space-4)">{{ achievement.icon }} {{ achievement.name }}</h1>
     <p style="color: var(--text-secondary)">{{ achievement.description }}</p>
 
