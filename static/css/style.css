@@ -461,6 +461,22 @@ body.menu-open { overflow: hidden; }
     margin: var(--space-7) 0;
 }
 .podium-place { flex: 0 1 240px; text-align: center; }
+/* Siegertreppe: Platz 2 links, Platz 1 mittig (höchster), Platz 3 rechts */
+.podium-2 { order: 1; }
+.podium-1 { order: 2; }
+.podium-3 { order: 3; }
+/* Krone über Platz 1, leicht über den Kartenrand hinausragend */
+.podium-1 { position: relative; }
+.crown {
+    width: 48px;
+    height: 44px;
+    color: var(--gold);
+    margin: 0 auto -20px;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.18));
+}
+.crown svg { width: 100%; height: 100%; display: block; }
 .podium-place .podium-card {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: var(--space-5);
@@ -968,6 +984,10 @@ body.menu-open { overflow: hidden; }
     .rank-delta { grid-column: 4; }
     .ranking-podium { flex-wrap: wrap; }
     .podium-place { flex-basis: 100%; }
+    /* Mobile gestapelt: Reihenfolge 1-2-3 (Platz 1 zuerst) */
+    .podium-1 { order: 1; }
+    .podium-2 { order: 2; }
+    .podium-3 { order: 3; }
     .podium-1 .podium-card, .podium-2 .podium-card, .podium-3 .podium-card {
         min-height: auto;
         border-radius: var(--radius-lg);

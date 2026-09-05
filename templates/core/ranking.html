@@ -12,6 +12,11 @@
         {% for score in scores %}
             {% if forloop.counter <= 3 %}
             <div class="podium-place podium-{{ forloop.counter }}">
+                {% if forloop.counter == 1 %}
+                <div class="crown">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 18h20l-1.5-8.5-5.5 4L12 6 9 13.5l-5.5-4L2 18z"/></svg>
+                </div>
+                {% endif %}
                 <a href="{% url 'teacher_detail' score.teacher.slug %}" style="color:inherit">
                     <div class="podium-card">
                         <div class="podium-photo-wrap">
