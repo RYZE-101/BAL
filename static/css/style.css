@@ -735,7 +735,7 @@ body.menu-open { overflow: hidden; }
 .alert-error, .alert-danger { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--text); }
 
 /* ---------- Section ---------- */
-.section { padding: var(--space-7) 0; }
+.section { padding-top: var(--space-7); padding-bottom: var(--space-7); }
 .section-title {
     font-size: var(--fs-2xl);
     font-weight: 700;
