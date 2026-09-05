@@ -699,6 +699,7 @@ body.menu-open { overflow: hidden; }
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
+    margin: 0; /* Browser-Default-Margin entfernt (sonst 2px-Tick-Versatz) */
     height: 6px;
     border-radius: var(--radius-full);
     background: var(--bg-soft);
