@@ -111,7 +111,7 @@
     /* --- Container --- */
     --container-max: 1080px;
     --container-narrow: 720px;
-    --container-padding: clamp(20px, 5vw, 64px);
+    --container-padding: clamp(24px, 5vw, 64px);
 }
 
 /* ---------- Dark Mode ---------- */
