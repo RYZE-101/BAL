@@ -715,7 +715,18 @@ body.menu-open { overflow: hidden; }
     box-shadow: var(--shadow-sm);
     transition: transform var(--duration) var(--ease);
 }
-.rating-question input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.rating-question input[type="range"]::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration) var(--ease);
+}
+.rating-question input[type="range"]::-webkit-slider-thumb:hover,
+.rating-question input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
 .range-value {
     min-width: 44px;
     text-align: center;
@@ -724,18 +735,21 @@ body.menu-open { overflow: hidden; }
     color: var(--accent);
 }
 
-/* Tick-Marks: 10 dezente Rastpunkte unter dem Slider */
+/* Tick-Marks: Positionen werden per JS exakt an den Regler-Stellen
+   ausgerichtet (Thumb-Offset kompensiert), inkl. Resize-Neuberechnung. */
 .range-ticks {
-    display: flex;
-    justify-content: space-between;
+    position: relative;
+    height: 6px;
     margin-top: 8px;
-    padding: 0 2px;
 }
 .range-ticks span {
+    position: absolute;
+    top: 0;
     width: 2px;
     height: 6px;
     background: var(--border);
     border-radius: 1px;
+    transform: translateX(-1px);
 }
 
 /* Skalen-Beschriftung an beiden Enden */

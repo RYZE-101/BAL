@@ -101,6 +101,40 @@
     });
 })();
 
+// Tick-Marks exakt an den Regler-Stellen ausrichten (Thumb-Offset kompensiert)
+// + Neuberechnung bei Fenstergrößenänderung (Debounced)
+(function () {
+    var THUMB = 26; // Breite des Slider-Thumbs in px (siehe CSS)
+
+    function positionRangeTicks() {
+        document.querySelectorAll('.rating-question').forEach(function (q) {
+            var slider = q.querySelector('input[type=range]');
+            var ticks = q.querySelector('.range-ticks');
+            if (!slider || !ticks) return;
+            var min = parseFloat(slider.min) || 1;
+            var max = parseFloat(slider.max) || 10;
+            var step = parseFloat(slider.step) || 1;
+            var W = slider.clientWidth;
+            var n = Math.round((max - min) / step) + 1;
+            ticks.style.width = W + 'px';
+            var spans = ticks.children;
+            for (var i = 0; i < n && i < spans.length; i++) {
+                var frac = n > 1 ? i / (n - 1) : 0;
+                var left = THUMB / 2 + frac * (W - THUMB);
+                spans[i].style.left = left + 'px';
+            }
+        });
+    }
+
+    function debounce(fn, wait) {
+        var t = null;
+        return function () { clearTimeout(t); t = setTimeout(fn, wait); };
+    }
+
+    window.addEventListener('load', function () { positionRangeTicks(); });
+    window.addEventListener('resize', debounce(positionRangeTicks, 200));
+})();
+
 // Live-Rang-Anzeige für Slider (Bewertungsformular)
 document.addEventListener('input', function (e) {
     if (e.target && e.target.type === 'range') {
