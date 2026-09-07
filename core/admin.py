@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
@@ -241,6 +241,35 @@ class UserRatingInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
+
+
+admin.site.unregister(Group)
+
+
+@admin.register(Group)
+class GroupAdmin(admin.ModelAdmin):
+    """Gruppen verwalten, inkl. Übersicht der zugehörigen Benutzer."""
+
+    list_display = ('name', 'member_count')
+    search_fields = ('name',)
+    filter_horizontal = ('permissions',)
+    readonly_fields = ('members_list',)
+    fieldsets = (
+        ('Gruppe', {'fields': ('name',)}),
+        ('Mitglieder', {'fields': ('members_list',)}),
+    )
+
+    @admin.display(description='Mitglieder')
+    def member_count(self, obj):
+        return obj.user_set.count()
+
+    @admin.display(description='Mitglieder')
+    def members_list(self, obj):
+        members = obj.user_set.order_by('username')
+        if not members:
+            return format_html('<em>Noch keine Mitglieder.</em>')
+        items = ''.join(format_html('<li>{}</li>', u.username) for u in members)
+        return format_html('<ul class="bal-group-members">{}</ul>', items)
 
 
 admin.site.unregister(User)
