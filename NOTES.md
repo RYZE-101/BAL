@@ -22,10 +22,11 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
 - **`RatingAnswer`** (rating, question, value 1–10): eine Bewertung (`Rating`)
   besteht aus einer Antwort pro zum Bewertungszeitpunkt aktiver Frage
   (normalisiertes Muster statt fester Spalten).
-- **Score-Logik (bewusste Entscheidung):** `avg_overall` einer Lehrkraft =
-  Durchschnitt **aller** `RatingAnswer`-Werte, unabhängig davon, ob die Frage
-  aktuell aktiv ist. So bleiben historische Antworten in der Wertung erhalten
-  und eine Deaktivierung ändert vergangene Scores nicht rückwirkend.
+- **Score-Logik:** `avg_overall` einer Lehrkraft = Durchschnitt der Antworten zu
+  den **aktuell aktiven** Fragen. Wird eine Frage deaktiviert, fließt sie
+  sofort nicht mehr in den Score ein (historische Antworten bleiben in der DB
+  erhalten, zählen aber nicht mehr mit). Bewusste Entscheidung, damit
+  Deaktivierungen sofort wirksam werden.
 - **Kategorie-Scores sind vollständig dynamisch:** Es gibt KEINE fest
   gespeicherten `avg_*`-Spalten mehr. `services.category_score(teacher_id,
   question_id)` berechnet den Durchschnitt je Frage on-the-fly aus den

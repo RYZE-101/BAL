@@ -19,21 +19,21 @@ ACH_MOST_INTERESTING = 'most-interesting'
 def recompute_teacher_score(teacher_id):
     """Aggregiert alle Ratings einer Lehrkraft neu in TeacherScore.
 
-    Gesamtscore = Durchschnitt ALLER Antworten (RatingAnswer) der Lehrkraft,
-    unabhängig davon, ob die zugehörige Frage aktuell aktiv ist (so bleiben
-    historische Antworten für die Vergleichbarkeit erhalten).
-    Per-Kategorie-Scores werden NICHT gespeichert, sondern dynamisch je Frage
-    aus den RatingAnswers abgefragt (siehe category_score() / Snapshot).
+    Gesamtscore = Durchschnitt der Antworten zu den AKTUELL AKTIVEN Fragen.
+    Wird eine Frage deaktiviert, fließt sie sofort nicht mehr in den Score
+    ein (die historischen Antworten bleiben aber in der Datenbank erhalten).
     """
     teacher_score, _ = TeacherScore.objects.get_or_create(teacher_id=teacher_id)
     rating_count = Rating.objects.filter(teacher_id=teacher_id).count()
-    answers = RatingAnswer.objects.filter(rating__teacher_id=teacher_id)
+    active_answers = RatingAnswer.objects.filter(
+        rating__teacher_id=teacher_id, question__is_active=True
+    )
 
     teacher_score.rating_count = rating_count
     if rating_count == 0:
         teacher_score.avg_overall = 0
     else:
-        overall = answers.aggregate(models_avg=Avg('value'))['models_avg']
+        overall = active_answers.aggregate(models_avg=Avg('value'))['models_avg']
         teacher_score.avg_overall = round(float(overall or 0), 2)
     teacher_score.save()
     return teacher_score
@@ -89,7 +89,7 @@ def _current_top(limit):
 
 
 def _best_by_question_key(key):
-    """Lehrkraft + Durchschnitt mit dem höchsten Wert in der Frage mit ``key``.
+    """Lehrkraft + Durchschnitt mit dem höchsten Wert in der AKTIVEN Frage ``key``.
 
     Dynamisch aus den RatingAnswers berechnet (kein gespeicherter
     Kategorie-Score). Liefert (teacher_obj, avg) oder (None, 0).
@@ -97,7 +97,7 @@ def _best_by_question_key(key):
     from .models import Teacher
 
     row = (
-        RatingAnswer.objects.filter(question__key=key)
+        RatingAnswer.objects.filter(question__key=key, question__is_active=True)
         .values('rating__teacher_id')
         .annotate(avg=Avg('value'))
         .order_by('-avg', 'rating__teacher_id')
@@ -214,9 +214,9 @@ def _current_rank_by_teacher():
 
 
 def _category_scores_by_teacher():
-    """{teacher_id: {question_id(str): avg}} dynamisch aus den RatingAnswers."""
+    """{teacher_id: {question_id(str): avg}} dynamisch, nur AKTIVE Fragen."""
     rows = (
-        RatingAnswer.objects
+        RatingAnswer.objects.filter(question__is_active=True)
         .values('rating__teacher_id', 'question_id')
         .annotate(avg=Avg('value'))
     )

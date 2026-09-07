@@ -414,6 +414,25 @@ class OriginalQuestionManageTests(TestCase):
         self.assertEqual(score.avg_overall, 7.0)
 
 
+    def test_deactivating_question_excludes_it_from_score(self):
+        """Option B: Deaktivieren einer Frage entfernt sie aus dem Durchschnitt."""
+        teacher = Teacher.objects.create(name='Dyn2')
+        pupil = User.objects.create_user('dynp2', password='x')
+        RatingHelpers.rate(teacher, pupil, {
+            'interest': 10, 'productivity': 2, 'fairness': 5,
+            'atmosphere': 5, 'digitalization': 5})
+        score = services.recompute_teacher_score(teacher.pk)
+        self.assertAlmostEqual(score.avg_overall, (10 + 2 + 5 + 5 + 5) / 5, places=2)
+        # 'interest' (Wert 10) deaktivieren -> Durchschnitt sinkt
+        q = RatingQuestion.objects.get(key='interest')
+        q.is_active = False
+        q.save()
+        score = services.recompute_teacher_score(teacher.pk)
+        self.assertAlmostEqual(score.avg_overall, (2 + 5 + 5 + 5) / 4, places=2)
+        q.is_active = True
+        q.save()
+
+
 class AdminTeacherSaveRegressionTests(TestCase):
     """Regression: Speichern einer bestehenden Lehrkraft mit Foto darf nicht
     mit 500 enden (clean_photo griff auf content_type eines ImageFieldFile zu)."""
