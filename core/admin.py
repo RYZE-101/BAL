@@ -125,19 +125,37 @@ class RatingAdmin(admin.ModelAdmin):
         return False
 
 
+class RatingQuestionForm(forms.ModelForm):
+    """Formular für Bewertungsfragen: Text prominent + verständlich."""
+
+    text = forms.CharField(
+        help_text='Der Fragetext, wie er im Bewertungsformular angezeigt wird.'
+    )
+
+    class Meta:
+        model = RatingQuestion
+        fields = '__all__'
+
+
 @admin.register(RatingQuestion)
 class RatingQuestionAdmin(admin.ModelAdmin):
     """Fragen im Admin verwalten: Text, Reihenfolge, aktiv/inaktiv.
 
     Löschen wird verhindert (historische Antworten bleiben erhalten); eine
-    Frage wird stattdessen über is_active=False deaktiviert.
+    Frage wird stattdessen über is_active=False deaktiviert. Alle Fragen
+    (ursprüngliche wie neu hinzugefügte) werden identisch behandelt.
     """
 
-    list_display = ('order', 'text', 'key', 'is_active', 'answer_count')
+    form = RatingQuestionForm
+    list_display = ('text', 'order', 'key', 'is_active', 'answer_count')
     list_editable = ('is_active',)
     list_filter = ('is_active',)
     search_fields = ('text', 'key')
     ordering = ('order', 'id')
+    fieldsets = (
+        ('Frage', {'fields': ('text',)}),
+        ('Einstellungen', {'fields': ('key', 'order', 'is_active')}),
+    )
 
     @admin.display(description='Antworten')
     def answer_count(self, obj):
