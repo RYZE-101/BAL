@@ -5,6 +5,8 @@ from core import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Vor dem auth-Include: eigenes Login mit Rate Limit (first match wins).
+    path('accounts/login/', views.login_view, name='login'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/signup/', views.signup, name='signup'),
     path('', views.home, name='home'),

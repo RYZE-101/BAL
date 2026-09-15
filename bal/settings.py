@@ -122,4 +122,26 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 
+# Cache: Default reicht fürs MVP. Für strikte, worker-übergreifende
+# Rate Limits im Produktivbetrieb Redis/Memcached eintragen.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'bal-ratelimit',
+    }
+}
+
+# Rate Limiting gegen Bots (core/ratelimit.py). Formate: "<n>/<s|m|h|d>".
+# Über Env je Umgebung anpassbar, z.B. BAL_RL_SIGNUP_HOUR=20/h.
+BAL_RATELIMIT_ENABLE = os.environ.get('BAL_RATELIMIT_ENABLE', 'True').lower() in ('1', 'true', 'yes')
+BAL_RATELIMITS = {
+    'signup_ip_hour': os.environ.get('BAL_RL_SIGNUP_HOUR', '10/h'),
+    'signup_ip_day': os.environ.get('BAL_RL_SIGNUP_DAY', '30/d'),
+    'login_ip_minute': os.environ.get('BAL_RL_LOGIN_MINUTE', '10/m'),
+    'login_ip_hour': os.environ.get('BAL_RL_LOGIN_HOUR', '30/h'),
+    'rating_user_minute': os.environ.get('BAL_RL_RATING_USER_MINUTE', '10/m'),
+    'rating_user_hour': os.environ.get('BAL_RL_RATING_USER_HOUR', '60/h'),
+    'rating_ip_hour': os.environ.get('BAL_RL_RATING_IP_HOUR', '200/h'),
+}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
