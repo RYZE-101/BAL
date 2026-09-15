@@ -35,7 +35,6 @@ jobs:
             --exclude 'media' \
             --exclude 'staticfiles' \
             --exclude '.env' \
-            --exclude 'cache' \
             ./ root@212.227.39.26:/opt/bal/
 
       - name: Run deploy script on server

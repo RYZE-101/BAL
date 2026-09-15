@@ -75,9 +75,8 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
   `BAL_RATELIMIT_ENABLE`. Tests in `core/tests.py` (RateLimitTests).
 - Registrierung: Honeypot-Feld + E-Mail-Eindeutigkeit (erschwert Bot-Massenaccounts).
 - Nginx als zweite Schicht: `limit_req` 10 r/s pro IP (scripts/server_setup.sh).
-  Hinweis: Zähler liegen im FileBasedCache (`cache/`), der von allen
-  Gunicorn-Workern geteilt wird. Für Multi-Server Redis/Memcached per
-  `CACHES` konfigurieren.
+  Hinweis: LocMem-Cache → Limit gilt pro Gunicorn-Worker; für strikte Limits
+  Redis/Memcached per `CACHES` konfigurieren.
 - E-Mail-Verifizierung ist als Option vorgesehen, aber NICHT Teil des MVP (Email-Backend
   = console). TODO, falls Spam relevant wird.
 
