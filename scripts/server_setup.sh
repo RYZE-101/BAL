@@ -51,6 +51,12 @@ WantedBy=multi-user.target
 EOF
 
 echo "==> Nginx-Konfiguration schreiben (HTTP, SSL-Block kommentiert)"
+# Zweite Schutzschicht gegen Bots: grobes Request-Limit pro IP (Django macht
+# das feine Limit pro Endpunkt, siehe core/ratelimit.py). Zone gehört in den
+# http-Kontext → eigene conf.d-Datei.
+cat > /etc/nginx/conf.d/bal-ratelimit.conf <<'EOF'
+limit_req_zone $binary_remote_addr zone=bal:10m rate=10r/s;
+EOF
 cat > "$NGINX_CONF" <<'EOF'
 server {
     listen 80;
@@ -67,6 +73,7 @@ server {
     }
 
     location / {
+        limit_req zone=bal burst=20 nodelay;
         include proxy_params;
         proxy_pass http://unix:/run/bal/bal.sock;
     }

@@ -1,11 +1,13 @@
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.views import LoginView as AuthLoginView
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404, redirect, render
 
 from . import services
 from .forms import RatingForm, UserSignupForm
+from .ratelimit import ratelimit
 from .models import (
     Achievement,
     Rating,
@@ -123,6 +125,9 @@ def teacher_detail(request, slug):
 
 
 @login_required
+@ratelimit("rating_user_minute", key="user", methods=("POST",))
+@ratelimit("rating_user_hour", key="user", methods=("POST",))
+@ratelimit("rating_ip_hour", key="ip", methods=("POST",))
 def rate_teacher(request, slug):
     teacher = get_object_or_404(Teacher, slug=slug, is_active=True)
     existing = Rating.objects.filter(pupil=request.user, teacher=teacher).first()
@@ -186,6 +191,15 @@ def achievement_detail(request, slug):
     })
 
 
+@ratelimit("login_ip_minute", key="ip", methods=("POST",))
+@ratelimit("login_ip_hour", key="ip", methods=("POST",))
+def login_view(request, *args, **kwargs):
+    """Login mit Rate Limit (Bots/Brute-Force-Schutz)."""
+    return AuthLoginView.as_view()(request, *args, **kwargs)
+
+
+@ratelimit("signup_ip_hour", key="ip", methods=("POST",))
+@ratelimit("signup_ip_day", key="ip", methods=("POST",))
 def signup(request):
     if request.user.is_authenticated:
         return redirect('home')

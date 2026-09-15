@@ -484,3 +484,79 @@ class AdminTeacherSaveRegressionTests(TestCase):
         self.assertNotEqual(resp.status_code, 500)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Teacher.objects.filter(name='Neue Lehrkraft').exists())
+
+
+class RateLimitTests(TestCase):
+    """Bot-Schutz: Registrierung, Login und Bewerten sind ratenbegrenzt."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _signup_data(self, username, email=None):
+        return {
+            'username': username,
+            'email': email or f'{username}@example.com',
+            'password1': 'sicheres-passwort-123',
+            'password2': 'sicheres-passwort-123',
+            'website': '',
+        }
+
+    def test_signup_blocked_after_limit(self):
+        from django.test import override_settings
+        limits = {'signup_ip_hour': '3/h', 'signup_ip_day': '30/d'}
+        with override_settings(BAL_RATELIMITS=limits):
+            for i in range(3):
+                resp = Client().post('/accounts/signup/', self._signup_data(f'bot{i}'))
+                self.assertEqual(resp.status_code, 302)
+            resp = Client().post('/accounts/signup/', self._signup_data('bot3'))
+            self.assertEqual(resp.status_code, 429)
+            self.assertIn('Retry-After', resp)
+            self.assertFalse(User.objects.filter(username='bot3').exists())
+
+    def test_signup_honeypot_rejects_bots(self):
+        data = self._signup_data('honeybot')
+        data['website'] = 'http://spam.example'
+        resp = Client().post('/accounts/signup/', data)
+        self.assertEqual(resp.status_code, 200)  # Formularfehler, kein Account
+        self.assertFalse(User.objects.filter(username='honeybot').exists())
+
+    def test_signup_duplicate_email_rejected(self):
+        User.objects.create_user('echt', email='dup@example.com', password='x')
+        resp = Client().post(
+            '/accounts/signup/', self._signup_data('fake', email='dup@example.com')
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='fake').exists())
+
+    def test_login_blocked_after_limit(self):
+        from django.test import override_settings
+        User.objects.create_user('opfer', password='geheim-geheim')
+        limits = {'login_ip_minute': '3/m', 'login_ip_hour': '30/h'}
+        with override_settings(BAL_RATELIMITS=limits):
+            c = Client()
+            for _ in range(3):
+                c.post('/accounts/login/', {'username': 'opfer', 'password': 'falsch'})
+            resp = c.post('/accounts/login/', {'username': 'opfer', 'password': 'falsch'})
+            self.assertEqual(resp.status_code, 429)
+            self.assertIn('Retry-After', resp)
+
+    def test_rating_blocked_after_limit(self):
+        from django.test import override_settings
+        pupil = User.objects.create_user('schueler', password='x')
+        teachers = [Teacher.objects.create(name=f'L{i}') for i in range(3)]
+        questions = list(RatingQuestion.objects.filter(is_active=True))
+        limits = {
+            'rating_user_minute': '2/m', 'rating_user_hour': '60/h',
+            'rating_ip_hour': '200/h',
+        }
+        with override_settings(BAL_RATELIMITS=limits):
+            c = Client()
+            c.force_login(pupil)
+            for t in teachers[:2]:
+                data = {f'q_{q.pk}': '5' for q in questions}
+                resp = c.post(f'/lehrkraefte/{t.slug}/bewerten/', data)
+                self.assertEqual(resp.status_code, 302)
+            data = {f'q_{q.pk}': '5' for q in questions}
+            resp = c.post(f'/lehrkraefte/{teachers[2].slug}/bewerten/', data)
+            self.assertEqual(resp.status_code, 429)
