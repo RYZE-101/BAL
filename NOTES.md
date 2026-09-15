@@ -65,18 +65,9 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
   "Auszeichnungen"-Inline, oder im TeacherAchievement-Admin (Aktion
   "Manuell entfernen" setzt `manually_removed=True`).
 
-## Anti-Spam (MVP → Rate Limiting aktiv)
+## Anti-Spam (MVP)
 - Django-Auth (Login Pflicht zum Bewerten). `unique_together(pupil, teacher)` verhindert
   Mehrfachabstimmung (Update statt Duplikat).
-- `core/ratelimit.py` (cache-basiert, keine extra Dependencies, HTTP 429 +
-  Retry-After): Registrierung 10/h + 30/d pro IP, Login 10/min + 30/h pro IP,
-  Bewerten 10/min + 60/h pro User sowie 200/h pro IP (Schul-NAT beachten).
-  Limits via `BAL_RATELIMITS`/`BAL_RL_*`-Env in settings.py anpassbar, Kill-Switch
-  `BAL_RATELIMIT_ENABLE`. Tests in `core/tests.py` (RateLimitTests).
-- Registrierung: Honeypot-Feld + E-Mail-Eindeutigkeit (erschwert Bot-Massenaccounts).
-- Nginx als zweite Schicht: `limit_req` 10 r/s pro IP (scripts/server_setup.sh).
-  Hinweis: LocMem-Cache → Limit gilt pro Gunicorn-Worker; für strikte Limits
-  Redis/Memcached per `CACHES` konfigurieren.
 - E-Mail-Verifizierung ist als Option vorgesehen, aber NICHT Teil des MVP (Email-Backend
   = console). TODO, falls Spam relevant wird.
 

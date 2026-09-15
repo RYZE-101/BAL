@@ -9,28 +9,10 @@ RATING_CHOICES = [(i, str(i)) for i in range(1, 11)]
 
 class UserSignupForm(UserCreationForm):
     email = forms.EmailField(required=True)
-    # Honeypot gegen dumme Bots: für Menschen unsichtbar (CSS), Bots füllen
-    # jedes Feld aus → Registrierung wird still abgelehnt.
-    website = forms.CharField(
-        required=False, widget=forms.HiddenInput, label=""
-    )
 
     class Meta:
         model = User
         fields = ('username', 'email', 'password1', 'password2')
-
-    def clean_email(self):
-        email = self.cleaned_data['email'].strip()
-        if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError(
-                'Diese E-Mail-Adresse ist bereits registriert.'
-            )
-        return email
-
-    def clean_website(self):
-        if self.cleaned_data.get('website'):
-            raise forms.ValidationError('Spam erkannt.')
-        return ''
 
     def save(self, commit=True):
         user = super().save(commit=False)
