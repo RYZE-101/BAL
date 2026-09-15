@@ -122,12 +122,14 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 
-# Cache: Default reicht fürs MVP. Für strikte, worker-übergreifende
-# Rate Limits im Produktivbetrieb Redis/Memcached eintragen.
+# Cache: FileBasedCache ist worker-übergreifend geteilt (wichtig, weil
+# Gunicorn mit mehreren Workern läuft und LocMem pro Worker zählen würde).
+# Für Multi-Server-Betrieb Redis/Memcached eintragen.
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'bal-ratelimit',
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.environ.get('BAL_CACHE_DIR', str(BASE_DIR / 'cache')),
+        'OPTIONS': {'MAX_ENTRIES': 10000},
     }
 }
 

@@ -6,6 +6,7 @@ venv/
 *.egg-info/
 
 # Django
+cache/
 db.sqlite3
 db.sqlite3-journal
 media/
