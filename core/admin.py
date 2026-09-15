@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
 from . import services
+from .images import compress_image
 from .models import (
     Achievement,
     AchievementRule,
@@ -20,10 +21,13 @@ from .models import (
 
 
 class TeacherAdminForm(forms.ModelForm):
-    """Validierung für Profilbild-Uploads (Größe & Format)."""
+    """Validierung + Komprimierung für Profilbild-Uploads.
+
+    Neue Uploads werden sofort auf max. 1024 px / JPEG q75 verkleinert,
+    damit die Seiten auch bei schlechtem WLAN schnell laden."""
 
     ALLOWED_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
-    MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+    MAX_SIZE = 5 * 1024 * 1024  # 5 MB (VOR der Komprimierung geprüft)
 
     class Meta:
         model = Teacher
@@ -39,6 +43,7 @@ class TeacherAdminForm(forms.ModelForm):
                 raise ValidationError('Nur JPG, PNG oder WEBP sind erlaubt.')
             if uploaded.size > self.MAX_SIZE:
                 raise ValidationError('Das Bild darf maximal 5 MB groß sein.')
+            return compress_image(uploaded)
         return photo
 
 

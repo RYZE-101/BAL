@@ -64,12 +64,18 @@ server {
 
     client_max_body_size 10M;
 
+    # Text-Assets komprimiert senden (gzip ist global an; Typen ab Werk aus)
+    gzip_types text/plain text/css application/json application/javascript text/javascript;
+    gzip_vary on;
+
     location /static/ {
         alias /opt/bal/staticfiles/;
+        expires 7d;
     }
 
     location /media/ {
         alias /opt/bal/media/;
+        expires 7d;
     }
 
     location / {

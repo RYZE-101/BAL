@@ -10,6 +10,7 @@ from PIL import Image
 
 from . import services
 from .forms import RatingForm
+from .images import MAX_DIMENSION, compress_image
 from .models import (
     Achievement,
     AchievementRule,
@@ -510,6 +511,60 @@ class AdminTeacherSaveRegressionTests(TestCase):
         self.assertNotEqual(resp.status_code, 500)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Teacher.objects.filter(name='Neue Lehrkraft').exists())
+
+
+class ImageCompressionTests(TestCase):
+    """Upload-Komprimierung: große Fotos werden klein (schnelle Ladezeit)."""
+
+    def _big_png(self, name='gross.png'):
+        import os
+        w, h = 1200, 900  # Rauschen: ~3,2 MB als PNG, klar über 1024 px
+        img = Image.frombytes('RGB', (w, h), os.urandom(w * h * 3))
+        buf = BytesIO()
+        img.save(buf, 'PNG')
+        buf.seek(0)
+        return SimpleUploadedFile(name, buf.read(), 'image/png')
+
+    def test_compress_image_shrinks_to_capped_jpeg(self):
+        uploaded = self._big_png()
+        original_len = len(uploaded.read())
+        uploaded.seek(0)
+        out = compress_image(uploaded)
+        self.assertTrue(out.name.endswith('.jpg'))
+        out.seek(0)
+        with Image.open(out) as im:
+            self.assertEqual(im.format, 'JPEG')
+            self.assertLessEqual(max(im.size), MAX_DIMENSION)
+        out.seek(0)
+        self.assertLess(len(out.read()), original_len // 2)
+
+    def test_admin_upload_saves_compressed_jpeg(self):
+        import os
+        admin = User.objects.create_superuser('imgadmin', '', 'pass')
+        client = Client()
+        client.force_login(admin)
+        resp = client.post('/admin/core/teacher/add/', {
+            'name': 'Foto-Lehrkraft',
+            'slug': '',
+            'bio': '',
+            'is_active': 'on',
+            'photo': self._big_png(),
+            'ratings-TOTAL_FORMS': '0',
+            'ratings-INITIAL_FORMS': '0',
+            'achievements-TOTAL_FORMS': '0',
+            'achievements-INITIAL_FORMS': '0',
+        })
+        self.assertEqual(resp.status_code, 302)
+        teacher = Teacher.objects.get(name='Foto-Lehrkraft')
+        try:
+            self.assertTrue(teacher.photo.name.endswith('.jpg'))
+            self.assertLess(
+                os.path.getsize(teacher.photo.path), 600 * 1024)
+            with Image.open(teacher.photo.path) as im:
+                self.assertLessEqual(max(im.size), MAX_DIMENSION)
+        finally:
+            if teacher.photo and os.path.isfile(teacher.photo.path):
+                os.remove(teacher.photo.path)
 
 
 class RateLimitTests(TestCase):

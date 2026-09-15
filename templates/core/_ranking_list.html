@@ -3,7 +3,7 @@
         <span class="rank-number">{{ score.rank }}.</span>
         <a href="{% url 'teacher_detail' score.teacher.slug %}" style="display:flex">
             {% if score.teacher.photo %}
-                <img class="thumb" src="{{ score.teacher.photo.url }}" alt="{{ score.teacher.name }}">
+                <img class="thumb" src="{{ score.teacher.photo.url }}" alt="{{ score.teacher.name }}" loading="lazy" decoding="async">
             {% else %}
                 <div class="avatar-placeholder">{{ score.teacher.name|slice:":1"|upper }}</div>
             {% endif %}
