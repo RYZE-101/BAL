@@ -9,9 +9,11 @@ Standardmäßig nur Dry-Run (zeigt, was gelöscht würde)::
     python manage.py purge_bot_accounts --delete
     python manage.py purge_bot_accounts --delete --prefix probe_ --prefix verify_
 
-Getroffen werden Usernamen, die auf Bot-Muster passen:
-  - user_<10 hexzeichen>  (Standard-Bot-Schema, z.B. user_84150dade2)
+Getroffen werden User, die auf Bot-Muster passen:
+  - <name>_<10 hexzeichen> + Mail <name>@example.com
+    (Bot-Schema aus haha.py, z.B. user_84150dade2, penis_5d95581d9f)
   - zusätzlich per --prefix angegebene Präfixe (z.B. probe_, verify_)
+  - per --any-email entfällt der Mail-Check (falls Bot Domain wechselt)
 """
 
 import re
@@ -25,13 +27,18 @@ from core import services
 from core.models import Rating
 from core.signals import recompute_score_on_rating_delete
 
-BOT_PATTERN = re.compile(r"^user_[0-9a-f]{10}$")
+BOT_PATTERN = re.compile(r"^[a-z]+_[0-9a-f]{10}$")
 
 
-def is_bot(username, extra_prefixes):
-    if BOT_PATTERN.match(username):
+def is_bot(user, extra_prefixes, any_email=False):
+    if any(user.username.startswith(p) for p in extra_prefixes):
         return True
-    return any(username.startswith(p) for p in extra_prefixes)
+    if not BOT_PATTERN.match(user.username):
+        return False
+    if any_email:
+        return True
+    # Bot-Schema: Mail ist immer <username>@example.com
+    return (user.email or "").lower() == f"{user.username}@example.com"
 
 
 class Command(BaseCommand):
@@ -46,17 +53,22 @@ class Command(BaseCommand):
             "--prefix", action="append", default=[],
             help="Zusätzlicher Username-Präfix (wiederholbar).",
         )
+        parser.add_argument(
+            "--any-email", action="store_true",
+            help="Mail-Check überspringen (nur Username-Muster zählt).",
+        )
 
     def handle(self, *args, **options):
         do_delete = options["delete"]
         prefixes = options["prefix"]
+        any_email = options["any_email"]
 
         candidates = User.objects.filter(is_staff=False, is_superuser=False)
-        victims = [u for u in candidates if is_bot(u.username, prefixes)]
+        victims = [u for u in candidates if is_bot(u, prefixes, any_email)]
 
         staff_hits = sum(
             1 for u in User.objects.filter(is_staff=True)
-            if is_bot(u.username, prefixes)
+            if is_bot(u, prefixes, any_email)
         )
         rating_count = Rating.objects.filter(pupil__in=victims).count()
 
