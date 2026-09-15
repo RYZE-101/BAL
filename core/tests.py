@@ -772,3 +772,45 @@ class SignupCaptchaTests(TestCase):
         resp = Client().post('/accounts/signup/', self._data('mensch'))
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(User.objects.filter(username='mensch').exists())
+
+
+class SignupSimpleTests(TestCase):
+    """Signup ist absichtlich simpel: Username max 20, Passwort nur 1x, egal wie stark."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _aged_ts(self, age=10):
+        import time as _time
+        from unittest import mock as _mock
+        from django.core import signing as _signing
+        with _mock.patch('time.time', return_value=_time.time() - age):
+            return _signing.TimestampSigner(salt='bal-signup').sign('signup')
+
+    def _post(self, username, password):
+        return Client().post('/accounts/signup/', {
+            'username': username, 'email': f'{username}@bal-test.de',
+            'password1': password,
+            'website': '', 'ts': self._aged_ts(),
+            **_captcha_fields(),
+        })
+
+    def test_weak_password_accepted(self):
+        resp = self._post('locker', 'abc')
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(username='locker')
+        self.assertTrue(user.check_password('abc'))
+
+    def test_no_password2_needed(self):
+        # kein password2 im POST -> trotzdem ok
+        resp = self._post('einfach', 'irgendein-passwort')
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(User.objects.filter(username='einfach').exists())
+
+    def test_username_max_20(self):
+        resp = self._post('u' * 20, 'lang-genug-123')
+        self.assertEqual(resp.status_code, 302)
+        resp = self._post('u' * 21, 'zu-lang-123')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='u' * 21).exists())

@@ -3,7 +3,6 @@ import time
 from captcha.fields import CaptchaField
 from django import forms
 from django.conf import settings
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core import signing
 
@@ -44,8 +43,19 @@ def blocked_email_domains():
     return FAKE_EMAIL_DOMAINS | set(extra)
 
 
-class UserSignupForm(UserCreationForm):
+class UserSignupForm(forms.ModelForm):
+    """Absichtlich simpel: Username (max. 20), Mail, Passwort EINMAL.
+
+    Keine Passwort-Stärke-Checks (kein password2, keine Validatoren) –
+    Registrierung soll schnell gehen. Bot-Schutz läuft über Honeypot,
+    Zeitfalle, Captcha, Fake-Mail-Block und Rate Limit.
+    """
+
+    username = forms.CharField(max_length=20, label='Benutzername')
     email = forms.EmailField(required=True)
+    password1 = forms.CharField(
+        label='Passwort', widget=forms.PasswordInput, strip=False
+    )
     # Honeypot gegen dumme Bots: für Menschen unsichtbar (CSS), Bots füllen
     # jedes Feld aus → Registrierung wird still abgelehnt.
     website = forms.CharField(
@@ -59,7 +69,7 @@ class UserSignupForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('username', 'email')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,6 +118,7 @@ class UserSignupForm(UserCreationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
+        user.set_password(self.cleaned_data['password1'])
         if commit:
             user.save()
         return user

@@ -1,0 +1,26 @@
+name: Server-Command (TEMPORÄR – nach Gebrauch löschen)
+
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "manage.py-Argumente (z.B. baseline_ratings)"
+        type: string
+        default: "baseline_ratings"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH-Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 212.227.39.26 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Command auf Server ausführen
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
+            root@212.227.39.26 \
+            "su -s /bin/bash www-data -c 'cd /opt/bal && .venv/bin/python manage.py ${{ inputs.args }}'"
