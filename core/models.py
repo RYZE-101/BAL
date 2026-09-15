@@ -203,6 +203,7 @@ class AchievementRule(models.Model):
     class ConditionType(models.TextChoices):
         TOP_N_RANK = 'top_n_rank', 'Top-N im Gesamt-Ranking'
         CATEGORY_SCORE_ABOVE = 'category_score_above', 'Kategorie-Score über Schwellenwert'
+        CATEGORY_SCORE_BELOW = 'category_score_below', 'Kategorie-Score unter Schwellenwert'
 
     achievement = models.ForeignKey(
         Achievement, on_delete=models.CASCADE, related_name='rules'
@@ -211,8 +212,9 @@ class AchievementRule(models.Model):
         max_length=30, choices=ConditionType.choices
     )
     # Bei TOP_N_RANK: N (z.B. 3). Bei CATEGORY_SCORE_ABOVE: Mindest-Score (z.B. 8.5).
+    # Bei CATEGORY_SCORE_BELOW: Höchst-Score (z.B. 4.0, Score muss DARUNTER liegen).
     threshold_value = models.FloatField(default=0)
-    # Nur bei CATEGORY_SCORE_ABOVE relevant: auf welche Frage sich der Score bezieht.
+    # Nur bei CATEGORY_SCORE_ABOVE/_BELOW relevant: auf welche Frage sich der Score bezieht.
     question = models.ForeignKey(
         RatingQuestion, on_delete=models.CASCADE,
         null=True, blank=True, related_name='rules',

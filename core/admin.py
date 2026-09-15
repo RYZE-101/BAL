@@ -220,6 +220,8 @@ class AchievementRuleAdmin(admin.ModelAdmin):
                 'TOP_N_RANK: threshold_value = N (z.B. 3 für Top-3). '
                 'CATEGORY_SCORE_ABOVE: threshold_value = Mindest-Score (z.B. 8.5), '
                 'question = die zu prüfende Bewertungsfrage. '
+                'CATEGORY_SCORE_BELOW: threshold_value = Höchst-Score (z.B. 4.0, '
+                'Score muss darunter liegen, fehlende Werte zählen nicht). '
                 'duration_days: leer = sofort bei Erfüllung, sonst Tage durchgängig erfüllt.'
             ),
         }),

@@ -321,6 +321,32 @@ class AchievementRuleTests(TestCase):
         self.assertTrue(TeacherAchievement.objects.filter(
             teacher=self.t1, achievement=self.ach, is_current=True).exists())
 
+    def test_category_score_rule_below_threshold(self):
+        """CATEGORY_SCORE_BELOW: Score unter Schwellenwert -> Vergabe;
+        Score darüber und fehlende Werte -> keine Vergabe."""
+        q = RatingQuestion.objects.get(key='fairness')
+        AchievementRule.objects.create(
+            achievement=self.ach, condition_type='category_score_below',
+            threshold_value=5, question=q, duration_days=None, is_active=True)
+        r1 = Rating.objects.create(pupil=self.pupil, teacher=self.t1)
+        RatingAnswer.objects.create(rating=r1, question=q, value=3)
+        r2 = Rating.objects.create(pupil=self.pupil, teacher=self.t2)
+        RatingAnswer.objects.create(rating=r2, question=q, value=8)
+        services.recompute_all_scores()
+        services.update_ranking()
+        services.evaluate_achievement_rules()
+        self.assertTrue(TeacherAchievement.objects.filter(
+            teacher=self.t1, achievement=self.ach, is_current=True).exists())
+        self.assertFalse(TeacherAchievement.objects.filter(
+            teacher=self.t2, achievement=self.ach).exists())
+        # t3 ohne Bewertung für die Frage bekommt nichts (keine Daten != schlecht)
+        t3 = Teacher.objects.create(name='T3')
+        TeacherScore.objects.create(
+            teacher=t3, rating_count=1, avg_overall=7, rank=3)
+        services.evaluate_achievement_rules()
+        self.assertFalse(TeacherAchievement.objects.filter(
+            teacher=t3, achievement=self.ach).exists())
+
     def test_sixth_question_rule_works(self):
         """Eine neue 6. Frage ist als CATEGORY_SCORE_ABOVE-Bedingung nutzbar."""
         q6 = RatingQuestion.objects.create(

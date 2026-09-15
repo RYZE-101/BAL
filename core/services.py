@@ -234,6 +234,12 @@ def _snapshot_meets(rule, snap):
         if rule.question_id is None:
             return False
         return snap.category_scores.get(str(rule.question_id), 0) >= rule.threshold_value
+    if rule.condition_type == AchievementRule.ConditionType.CATEGORY_SCORE_BELOW:
+        if rule.question_id is None:
+            return False
+        # Fehlender Wert zählt NICHT als "unter" (keine Daten != schlechter Score).
+        val = snap.category_scores.get(str(rule.question_id))
+        return val is not None and val < rule.threshold_value
     return False
 
 
@@ -250,6 +256,12 @@ def _current_satisfying_ids(rule, rank_by_teacher, cat_by_teacher):
                 continue
             val = cat_by_teacher.get(tid, {}).get(str(rule.question_id))
             if val is not None and val >= rule.threshold_value:
+                ids.add(tid)
+        elif rule.condition_type == AchievementRule.ConditionType.CATEGORY_SCORE_BELOW:
+            if rule.question_id is None:
+                continue
+            val = cat_by_teacher.get(tid, {}).get(str(rule.question_id))
+            if val is not None and val < rule.threshold_value:
                 ids.add(tid)
     return ids
 
