@@ -574,13 +574,22 @@ class RateLimitTests(TestCase):
         from django.core.cache import cache
         cache.clear()
 
+    def _aged_ts(self, age=10):
+        """Signierter Zeitfallen-Wert, der vor `age` Sekunden erzeugt wurde."""
+        import time as _time
+        from unittest import mock as _mock
+        from django.core import signing as _signing
+        with _mock.patch('time.time', return_value=_time.time() - age):
+            return _signing.TimestampSigner(salt='bal-signup').sign('signup')
+
     def _signup_data(self, username, email=None):
         return {
             'username': username,
-            'email': email or f'{username}@example.com',
+            'email': email or f'{username}@bal-test.de',
             'password1': 'sicheres-passwort-123',
             'password2': 'sicheres-passwort-123',
             'website': '',
+            'ts': self._aged_ts(),
         }
 
     def test_signup_blocked_after_limit(self):
@@ -603,9 +612,9 @@ class RateLimitTests(TestCase):
         self.assertFalse(User.objects.filter(username='honeybot').exists())
 
     def test_signup_duplicate_email_rejected(self):
-        User.objects.create_user('echt', email='dup@example.com', password='x')
+        User.objects.create_user('echt', email='dup@bal-test.de', password='x')
         resp = Client().post(
-            '/accounts/signup/', self._signup_data('fake', email='dup@example.com')
+            '/accounts/signup/', self._signup_data('fake', email='dup@bal-test.de')
         )
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(User.objects.filter(username='fake').exists())
@@ -641,3 +650,65 @@ class RateLimitTests(TestCase):
             data = {f'q_{q.pk}': '5' for q in questions}
             resp = c.post(f'/lehrkraefte/{teachers[2].slug}/bewerten/', data)
             self.assertEqual(resp.status_code, 429)
+
+
+class SignupAntispamTests(TestCase):
+    """Fake-Mails und Zeitfalle bei der Registrierung."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _aged_ts(self, age=10):
+        import time as _time
+        from unittest import mock as _mock
+        from django.core import signing as _signing
+        with _mock.patch('time.time', return_value=_time.time() - age):
+            return _signing.TimestampSigner(salt='bal-signup').sign('signup')
+
+    def _fresh_ts(self):
+        from django.core import signing as _signing
+        return _signing.TimestampSigner(salt='bal-signup').sign('signup')
+
+    def _post(self, username, email, ts):
+        return Client().post('/accounts/signup/', {
+            'username': username, 'email': email,
+            'password1': 'Xx1!sicheres-passwort', 'password2': 'Xx1!sicheres-passwort',
+            'website': '', 'ts': ts,
+        })
+
+    def test_bot_domain_example_com_blocked(self):
+        resp = self._post('botx', 'botx@example.com', self._aged_ts())
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='botx').exists())
+
+    def test_disposable_domain_blocked(self):
+        resp = self._post('boty', 'boty@yopmail.com', self._aged_ts())
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='boty').exists())
+
+    def test_timetrap_blocks_instant_submit(self):
+        # Bot feuert GET -> POST in Millisekunden
+        resp = self._post('flink', 'flink@bal-test.de', self._fresh_ts())
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='flink').exists())
+
+    def test_timetrap_blocks_tampered_value(self):
+        resp = self._post('fälscher', 'f@bal-test.de', 'manipuliert')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='fälscher').exists())
+
+    def test_timetrap_blocks_missing_value(self):
+        c = Client()
+        resp = c.post('/accounts/signup/', {
+            'username': 'ohne', 'email': 'ohne@bal-test.de',
+            'password1': 'Xx1!sicheres-passwort', 'password2': 'Xx1!sicheres-passwort',
+            'website': '',
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='ohne').exists())
+
+    def test_human_pace_signup_works(self):
+        resp = self._post('echt', 'echt@bal-test.de', self._aged_ts(age=30))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(User.objects.filter(username='echt').exists())

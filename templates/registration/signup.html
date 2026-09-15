@@ -6,10 +6,10 @@
         <h1>Konto erstellen</h1>
         <form method="post">
             {% csrf_token %}
-            {{ form.website }} {# Honeypot (unsichtbar) gegen Bots #}
+            {{ form.website }}{{ form.ts }} {# Honeypot + Zeitfalle (unsichtbar) gegen Bots #}
             {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
             {% for field in form %}
-                {% if field.name != 'website' %}
+                {% if field.name != 'website' and field.name != 'ts' %}
                 <div class="form-group">
                     <label>{{ field.label }}</label>
                     {{ field }}
@@ -18,6 +18,7 @@
                 </div>
                 {% endif %}
             {% endfor %}
+            {{ form.website.errors }}{{ form.ts.errors }}
             <button type="submit" class="btn btn-primary btn-lg btn-block">Registrieren</button>
         </form>
         <p style="text-align:center; margin-top: var(--space-5); color: var(--text-secondary)">
