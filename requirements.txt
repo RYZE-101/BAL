@@ -1,5 +1,6 @@
 Django>=5.0,<7
 Pillow>=10.0
+django-simple-captcha>=0.6.0
 gunicorn>=21.0
 psycopg2-binary>=2.9
 rapidfuzz>=3.0

@@ -31,6 +31,7 @@ CSRF_TRUSTED_ORIGINS = _csv_setting('DJANGO_CSRF_TRUSTED_ORIGINS', '')
 # Application definition
 
 INSTALLED_APPS = [
+    'captcha',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -132,6 +133,12 @@ CACHES = {
         'OPTIONS': {'MAX_ENTRIES': 10000},
     }
 }
+
+# Captcha bei der Registrierung (django-simple-captcha, selbst-gehostet).
+# Test-Modus für die Testsuite (akzeptiert dort jede Antwort).
+CAPTCHA_TEST_MODE = os.environ.get('BAL_CAPTCHA_TEST_MODE', 'False').lower() in ('1', 'true', 'yes')
+CAPTCHA_LENGTH = 5
+CAPTCHA_TIMEOUT = 5  # Minuten, danach läuft das Captcha ab
 
 # Rate Limiting gegen Bots (core/ratelimit.py). Formate: "<n>/<s|m|h|d>".
 # Über Env je Umgebung anpassbar, z.B. BAL_RL_SIGNUP_HOUR=20/h.

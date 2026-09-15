@@ -4,7 +4,15 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
+
+
+def _captcha_fields():
+    """Frisches Captcha + korrekte Antwort (echte Validierung, kein Test-Modus)."""
+    from captcha.models import CaptchaStore
+    key = CaptchaStore.generate_key()
+    answer = CaptchaStore.objects.get(hashkey=key).response
+    return {'captcha_0': key, 'captcha_1': answer}
 from django.utils import timezone
 from PIL import Image
 
@@ -590,6 +598,7 @@ class RateLimitTests(TestCase):
             'password2': 'sicheres-passwort-123',
             'website': '',
             'ts': self._aged_ts(),
+            **_captcha_fields(),
         }
 
     def test_signup_blocked_after_limit(self):
@@ -675,6 +684,7 @@ class SignupAntispamTests(TestCase):
             'username': username, 'email': email,
             'password1': 'Xx1!sicheres-passwort', 'password2': 'Xx1!sicheres-passwort',
             'website': '', 'ts': ts,
+            **_captcha_fields(),
         })
 
     def test_bot_domain_example_com_blocked(self):
@@ -704,6 +714,7 @@ class SignupAntispamTests(TestCase):
             'username': 'ohne', 'email': 'ohne@bal-test.de',
             'password1': 'Xx1!sicheres-passwort', 'password2': 'Xx1!sicheres-passwort',
             'website': '',
+            **_captcha_fields(),
         })
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(User.objects.filter(username='ohne').exists())
@@ -712,3 +723,52 @@ class SignupAntispamTests(TestCase):
         resp = self._post('echt', 'echt@bal-test.de', self._aged_ts(age=30))
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(User.objects.filter(username='echt').exists())
+
+
+class SignupCaptchaTests(TestCase):
+    """Bild-Captcha bei der Registrierung (Headless-Bots scheitern)."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def _aged_ts(self, age=10):
+        import time as _time
+        from unittest import mock as _mock
+        from django.core import signing as _signing
+        with _mock.patch('time.time', return_value=_time.time() - age):
+            return _signing.TimestampSigner(salt='bal-signup').sign('signup')
+
+    def _data(self, username, captcha_answer=None):
+        fields = _captcha_fields()
+        if captcha_answer is not None:
+            fields['captcha_1'] = captcha_answer
+        return {
+            'username': username, 'email': f'{username}@bal-test.de',
+            'password1': 'Xx1!sicheres-passwort', 'password2': 'Xx1!sicheres-passwort',
+            'website': '', 'ts': self._aged_ts(),
+            **fields,
+        }
+
+    def test_signup_page_shows_captcha(self):
+        resp = Client().get('/accounts/signup/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'captcha')
+
+    def test_wrong_captcha_rejected(self):
+        resp = Client().post('/accounts/signup/', self._data('botc', 'falsch'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='botc').exists())
+
+    def test_missing_captcha_rejected(self):
+        data = self._data('botd')
+        del data['captcha_0']
+        del data['captcha_1']
+        resp = Client().post('/accounts/signup/', data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='botd').exists())
+
+    def test_correct_captcha_passes(self):
+        resp = Client().post('/accounts/signup/', self._data('mensch'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(User.objects.filter(username='mensch').exists())

@@ -1,5 +1,6 @@
 import time
 
+from captcha.fields import CaptchaField
 from django import forms
 from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm
@@ -52,6 +53,9 @@ class UserSignupForm(UserCreationForm):
     )
     # Zeitfalle (signed, fälschungssicher): wann wurde das Formular geladen.
     ts = forms.CharField(required=False, widget=forms.HiddenInput, label='')
+    # Bild-Captcha (selbst-gehostet, kein US-Dienst): Headless-Bots können
+    # das Bild nicht lesen/lösen, Menschen tippen 5 Zeichen ab.
+    captcha = CaptchaField(label='Sicherheitscode')
 
     class Meta:
         model = User
