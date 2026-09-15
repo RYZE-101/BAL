@@ -16,10 +16,10 @@ Verwendung::
 schlagen (Fallback: ``DEFAULT_LIMITS`` unten), sodass Tests per
 ``override_settings`` kleine Limits setzen können. Format: ``"<n>/<s|m|h|d>"``.
 
-Hinweis: Der Cache (FileBasedCache, siehe settings.CACHES) wird von allen
-Gunicorn-Workern geteilt. Für Multi-Server-Betrieb Redis/Memcached per
-``CACHES`` konfigurieren. Als zweite Schicht begrenzt Nginx per
-``limit_req`` (siehe scripts/server_setup.sh).
+Hinweis: Mit dem Default-Cache (LocMem) gilt das Limit pro Gunicorn-Worker.
+Für strikte, worker-übergreifende Limits im Produktivbetrieb einen geteilten
+Cache (Redis/Memcached) per ``CACHES``-Setting konfigurieren. Als zweite
+Schicht begrenzt Nginx per ``limit_req`` (siehe scripts/server_setup.sh).
 """
 
 import time
@@ -46,20 +46,10 @@ DEFAULT_LIMITS = {
 
 
 def get_client_ip(request):
-    """Client-IP hinter Reverse Proxy.
-
-    WICHTIG: Der *erste* X-Forwarded-For-Eintrag ist client-kontrolliert
-    (Spoofing → Limit-Umgehung). Nginx hängt die echte Peer-IP per
-    ``$proxy_add_x_forwarded_for`` hinten an, daher gilt: X-Real-IP
-    (setzt Nginx auf den echten Peer, nicht fälschbar), sonst der LETZTE
-    XFF-Eintrag, sonst REMOTE_ADDR.
-    """
-    real_ip = request.META.get("HTTP_X_REAL_IP")
-    if real_ip:
-        return real_ip.strip()
+    """Client-IP, hinter Reverse Proxy (X-Forwarded-For) nutzbar."""
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
     if xff:
-        return xff.split(",")[-1].strip()
+        return xff.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
 
 
@@ -74,18 +64,10 @@ def parse_rate(rate):
 
 
 def check_limited(group, ident, rate):
-    """Erhöht den Zähler.
-
-    Gibt (limited, retry_after, count, limit) zurück. ``count``/``limit``
-    landen als X-RateLimit-Header auf der Response (Debug/Monitoring).
-    """
-    import logging
-
+    """Erhöht den Zähler, gibt (limited: bool, retry_after: int) zurück."""
     limit, window = parse_rate(rate)
-    now = int(time.time())
-    bucket = now // window
+    bucket = int(time.time() // window)
     key = f"bal-rl:{group}:{window}:{bucket}:{ident}"
-    remaining_ttl = (bucket + 1) * window - now
     try:
         # add() ist atomar: nur der erste Caller setzt, alle anderen erhöhen.
         if cache.add(key, 1, timeout=window):
@@ -96,21 +78,12 @@ def check_limited(group, ident, rate):
             except ValueError:
                 cache.set(key, 1, timeout=window)
                 count = 1
-            # incr() schreibt mit Default-TTL → Fenster-TTL wiederherstellen,
-            # sonst würden Slow-Drip-Angriffe dem Tages-/Stundenlimit entgehen.
-            try:
-                cache.set(key, count, timeout=max(remaining_ttl, 1))
-            except Exception:
-                pass
     except Exception:
-        # Cache kaputt → durchlassen, aber LAUT (sonst Fail-Open unbemerkt).
-        logging.getLogger(__name__).exception(
-            "Rate-Limit-Cachefehler bei %s (lasse durch)", key
-        )
-        return False, 0, 0, limit
+        return False, 0  # Cache kaputt → lieber durchlassen als Seite lahmlegen
     if count <= limit:
-        return False, 0, count, limit
-    return True, max(remaining_ttl + 1, 1), count, limit
+        return False, 0
+    retry_after = (bucket + 1) * window - int(time.time()) + 1
+    return True, max(retry_after, 1)
 
 
 def _too_many_requests(request, retry_after):
@@ -153,15 +126,11 @@ def ratelimit(limit_key, key="ip", methods=("POST",)):
             if request.method in methods and getattr(
                 settings, "BAL_RATELIMIT_ENABLE", True
             ):
-                limited, retry_after, count, limit = check_limited(
+                limited, retry_after = check_limited(
                     limit_key, resolve_key(request), get_limit(limit_key)
                 )
                 if limited:
                     return _too_many_requests(request, retry_after)
-                response = view_func(request, *args, **kwargs)
-                response["X-RateLimit-Limit"] = str(limit)
-                response["X-RateLimit-Remaining"] = str(max(limit - count, 0))
-                return response
             return view_func(request, *args, **kwargs)
 
         return wrapper

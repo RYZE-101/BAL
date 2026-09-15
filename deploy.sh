@@ -32,10 +32,9 @@ python manage.py migrate --noinput
 # Statische Dateien sammeln
 python manage.py collectstatic --noinput
 
-# Upload-/Static-/Cache-Verzeichnisse für den Web-User freigeben
-# (cache/ MUSS www-data gehören, sonst schlägt der Rate-Limit-Cache fehl!)
-mkdir -p media staticfiles cache
-chown -R "$DJANGO_USER":"$DJANGO_USER" media staticfiles cache db.sqlite3 2>/dev/null || true
+# Upload-/Static-Verzeichnisse für den Web-User freigeben
+mkdir -p media staticfiles
+chown -R "$DJANGO_USER":"$DJANGO_USER" media staticfiles db.sqlite3 2>/dev/null || true
 
 # Gunicorn-Dienst neu starten (fängt neuen Code auf)
 if systemctl list-unit-files 'bal.service' >/dev/null 2>&1; then
