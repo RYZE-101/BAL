@@ -55,7 +55,9 @@ echo "==> Nginx-Konfiguration schreiben (HTTP, SSL-Block kommentiert)"
 # das feine Limit pro Endpunkt, siehe core/ratelimit.py). Zone gehört in den
 # http-Kontext → eigene conf.d-Datei.
 cat > /etc/nginx/conf.d/bal-ratelimit.conf <<'EOF'
+# Generell: normale Seitenaufrufe. Streng: Auth + Bewerten (Bot-Ziele).
 limit_req_zone $binary_remote_addr zone=bal:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=bal_auth:10m rate=2r/s;
 EOF
 cat > "$NGINX_CONF" <<'EOF'
 server {
@@ -76,6 +78,24 @@ server {
     location /media/ {
         alias /opt/bal/media/;
         expires 7d;
+    }
+
+    location = /accounts/login/ {
+        limit_req zone=bal_auth burst=5 nodelay;
+        include proxy_params;
+        proxy_pass http://unix:/run/bal/bal.sock;
+    }
+
+    location = /accounts/signup/ {
+        limit_req zone=bal_auth burst=5 nodelay;
+        include proxy_params;
+        proxy_pass http://unix:/run/bal/bal.sock;
+    }
+
+    location ~ /bewerten/$ {
+        limit_req zone=bal_auth burst=10 nodelay;
+        include proxy_params;
+        proxy_pass http://unix:/run/bal/bal.sock;
     }
 
     location / {

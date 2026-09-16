@@ -193,6 +193,7 @@ def achievement_detail(request, slug):
 
 @ratelimit("login_ip_minute", key="ip", methods=("POST",))
 @ratelimit("login_ip_hour", key="ip", methods=("POST",))
+@ratelimit("login_ip_day", key="ip", methods=("POST",))
 def login_view(request, *args, **kwargs):
     """Login mit Rate Limit (Bots/Brute-Force-Schutz)."""
     return AuthLoginView.as_view()(request, *args, **kwargs)

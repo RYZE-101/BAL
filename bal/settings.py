@@ -144,13 +144,21 @@ CAPTCHA_TIMEOUT = 5  # Minuten, danach läuft das Captcha ab
 # Über Env je Umgebung anpassbar, z.B. BAL_RL_SIGNUP_HOUR=20/h.
 BAL_RATELIMIT_ENABLE = os.environ.get('BAL_RATELIMIT_ENABLE', 'True').lower() in ('1', 'true', 'yes')
 BAL_RATELIMITS = {
-    'signup_ip_hour': os.environ.get('BAL_RL_SIGNUP_HOUR', '10/h'),
-    'signup_ip_day': os.environ.get('BAL_RL_SIGNUP_DAY', '30/d'),
-    'login_ip_minute': os.environ.get('BAL_RL_LOGIN_MINUTE', '10/m'),
+    # Signup: grosszuegig pro IP, weil Schul-NAT (ganze Klasse meldet
+    # sich in einer Stunde an). Bots bremsen Honeypot/Zeitfalle/Captcha.
+    'signup_ip_hour': os.environ.get('BAL_RL_SIGNUP_HOUR', '30/h'),
+    'signup_ip_day': os.environ.get('BAL_RL_SIGNUP_DAY', '100/d'),
+    # Login: streng (OWASP: ~5 Fehlversuche), Stunde/Tag als Dauerbremse
+    # gegen Slow-Drip-Credential-Stuffing.
+    'login_ip_minute': os.environ.get('BAL_RL_LOGIN_MINUTE', '5/m'),
     'login_ip_hour': os.environ.get('BAL_RL_LOGIN_HOUR', '30/h'),
-    'rating_user_minute': os.environ.get('BAL_RL_RATING_USER_MINUTE', '10/m'),
-    'rating_user_hour': os.environ.get('BAL_RL_RATING_USER_HOUR', '60/h'),
-    'rating_ip_hour': os.environ.get('BAL_RL_RATING_IP_HOUR', '200/h'),
+    'login_ip_day': os.environ.get('BAL_RL_LOGIN_DAY', '100/d'),
+    # Bewerten: Mensch schafft ~1-2/min (5 Slider + Submit), ~10-15/h
+    # (eigene Lehrkraefte). IP-Limit hoch wegen Schul-NAT (Klasse
+    # bewertet gemeinsam im Unterricht).
+    'rating_user_minute': os.environ.get('BAL_RL_RATING_USER_MINUTE', '5/m'),
+    'rating_user_hour': os.environ.get('BAL_RL_RATING_USER_HOUR', '30/h'),
+    'rating_ip_hour': os.environ.get('BAL_RL_RATING_IP_HOUR', '300/h'),
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

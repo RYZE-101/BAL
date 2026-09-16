@@ -69,12 +69,15 @@ Kurze Notizen, damit nachvollziehbar bleibt, was warum gemacht wurde.
 - Django-Auth (Login Pflicht zum Bewerten). `unique_together(pupil, teacher)` verhindert
   Mehrfachabstimmung (Update statt Duplikat).
 - `core/ratelimit.py` (cache-basiert, keine extra Dependencies, HTTP 429 +
-  Retry-After): Registrierung 10/h + 30/d pro IP, Login 10/min + 30/h pro IP,
-  Bewerten 10/min + 60/h pro User sowie 200/h pro IP (Schul-NAT beachten).
+  Retry-After): Registrierung 30/h + 100/d pro IP (Schul-NAT: ganze Klasse
+  meldet sich in einer Stunde an), Login 5/min + 30/h + 100/d pro IP
+  (Brute-Force/Slow-Drip-Schutz), Bewerten 5/min + 30/h pro User sowie
+  300/h pro IP (Klasse bewertet gemeinsam im Unterricht).
   Limits via `BAL_RATELIMITS`/`BAL_RL_*`-Env in settings.py anpassbar, Kill-Switch
   `BAL_RATELIMIT_ENABLE`. Tests in `core/tests.py` (RateLimitTests).
 - Registrierung: Honeypot-Feld + E-Mail-Eindeutigkeit (erschwert Bot-Massenaccounts).
-- Nginx als zweite Schicht: `limit_req` 10 r/s pro IP (scripts/server_setup.sh).
+- Nginx als zweite Schicht: `limit_req` 10 r/s pro IP allgemein, 2 r/s für
+  Login/Signup/Bewerten (scripts/server_setup.sh).
   Hinweis: Zähler liegen im FileBasedCache (`cache/`), der von allen
   Gunicorn-Workern geteilt wird. Für Multi-Server Redis/Memcached per
   `CACHES` konfigurieren.

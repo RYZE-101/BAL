@@ -35,13 +35,14 @@ _PERIODS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 # Schul-NAT beachten: viele Schüler teilen sich eine IP → IP-Limits großzügig,
 # User-Limits streng (Bots bewerten hunderte Lehrkräfte in Minuten).
 DEFAULT_LIMITS = {
-    "signup_ip_hour": "10/h",   # Massen-Registrierungen durch Bots
-    "signup_ip_day": "30/d",
-    "login_ip_minute": "10/m",  # Credential-Stuffing / Brute Force
+    "signup_ip_hour": "30/h",   # Massen-Registrierungen durch Bots
+    "signup_ip_day": "100/d",  # grosszuegig: Schulklasse hinter einer NAT-IP
+    "login_ip_minute": "5/m",  # Credential-Stuffing / Brute Force
     "login_ip_hour": "30/h",
-    "rating_user_minute": "10/m",  # Bewertungs-Spam pro Account
-    "rating_user_hour": "60/h",
-    "rating_ip_hour": "200/h",  # grobes Netz gegen Bot-Farmen
+    "login_ip_day": "100/d",   # Slow-Drip ueber Stunden hinweg
+    "rating_user_minute": "5/m",  # Bewertungs-Spam pro Account
+    "rating_user_hour": "30/h",
+    "rating_ip_hour": "300/h",  # grobes Netz gegen Bot-Farmen, hoch wegen Schul-NAT
 }
 
 
