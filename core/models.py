@@ -25,6 +25,11 @@ class Subject(models.Model):
 class Teacher(models.Model):
     """Eine Lehrkraft mit Profil und Fächern."""
 
+    # Neutrale Standard-Avatare (lizenzfrei, im Repo unter
+    # static/img/teachers/avatar-1..N.svg). Werden im Frontend/Admin als
+    # Fallback gezeigt, solange kein eigenes Foto hochgeladen ist.
+    AVATAR_COUNT = 6
+
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     subjects = models.ManyToManyField(Subject, related_name='teachers', blank=True)
@@ -48,6 +53,19 @@ class Teacher(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def avatar_index(self):
+        """Stabile Avatar-Nummer 1..AVATAR_COUNT je Lehrkraft."""
+        base = self.pk
+        if base is None:
+            base = sum(ord(c) for c in (self.slug or self.name or 'x'))
+        return (base % self.AVATAR_COUNT) + 1
+
+    @property
+    def avatar_static(self):
+        """Static-Pfad des Standard-Avatars (kein Server-Upload)."""
+        return f'img/teachers/avatar-{self.avatar_index}.svg'
 
 
 class RatingQuestion(models.Model):

@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
+from django.templatetags.static import static
 from django.utils.html import format_html
 
 from . import services
@@ -84,12 +85,17 @@ class TeacherAdmin(admin.ModelAdmin):
 
     @admin.display(description='Foto')
     def photo_preview(self, obj):
-        if not obj.photo:
-            return '–'
+        if obj.photo:
+            return format_html(
+                '<img src="{}" alt="{}" style="width:72px;height:72px;object-fit:cover;'
+                'border-radius:14px;border:1px solid rgba(0,0,0,.12)">',
+                obj.photo.url,
+                obj.name,
+            )
         return format_html(
-            '<img src="{}" alt="{}" style="width:72px;height:72px;object-fit:cover;'
+            '<img src="{}" alt="{} (Standard-Avatar)" style="width:72px;height:72px;object-fit:cover;'
             'border-radius:14px;border:1px solid rgba(0,0,0,.12)">',
-            obj.photo.url,
+            static(obj.avatar_static),
             obj.name,
         )
 

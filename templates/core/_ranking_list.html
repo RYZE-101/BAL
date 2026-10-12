@@ -2,11 +2,7 @@
     <div class="ranking-row fade-in">
         <span class="rank-number">{{ score.rank }}.</span>
         <a href="{% url 'teacher_detail' score.teacher.slug %}" style="display:flex">
-            {% if score.teacher.photo %}
-                <img class="thumb" src="{{ score.teacher.photo.url }}" alt="{{ score.teacher.name }}" loading="lazy" decoding="async">
-            {% else %}
-                <div class="avatar-placeholder">{{ score.teacher.name|slice:":1"|upper }}</div>
-            {% endif %}
+            {% include 'core/_teacher_photo.html' with teacher=score.teacher class='thumb' %}
         </a>
         <a class="rank-name" href="{% url 'teacher_detail' score.teacher.slug %}">{{ score.teacher.name }}</a>
         <span class="rank-score">{{ score.avg_overall|floatformat:1 }}<small> / 10</small></span>
