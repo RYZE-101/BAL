@@ -30,6 +30,7 @@ jobs:
           rsync -avz --delete --no-o --no-g \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null" \
             --exclude '.git' \
+            --exclude '.github' \
             --exclude '.venv' \
             --exclude 'db.sqlite3' \
             --exclude 'media' \
